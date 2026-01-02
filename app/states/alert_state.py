@@ -1,0 +1,39 @@
+import reflex as rx
+from faker import Faker
+import random
+from datetime import datetime
+from app.states.schema import Alert
+
+fake = Faker()
+
+
+class AlertState(rx.State):
+    alerts: list[Alert] = []
+    show_sidebar: bool = True
+
+    @rx.event
+    def toggle_sidebar(self):
+        self.show_sidebar = not self.show_sidebar
+
+    @rx.event
+    def dismiss_alert(self, alert_id: int):
+        self.alerts = [a for a in self.alerts if a.id != alert_id]
+
+    @rx.event
+    def generate_alerts(self):
+        if self.alerts:
+            return
+        severities = ["critical", "warning", "system"]
+        new_alerts = []
+        for i in range(5):
+            severity = random.choice(severities)
+            alert = Alert(
+                id=i + 1,
+                severity=severity,
+                title=f"{severity.title()} Issue Detected",
+                message=fake.sentence(),
+                timestamp=datetime.now(),
+                is_dismissed=False,
+            )
+            new_alerts.append(alert)
+        self.alerts = new_alerts
