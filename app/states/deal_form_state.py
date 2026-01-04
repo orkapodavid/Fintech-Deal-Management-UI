@@ -3,7 +3,7 @@ import logging
 from typing import Optional, Any
 from enum import Enum
 from datetime import datetime
-from app.states.validation import ValidationService, ValidationResult
+from pydantic import ValidationError
 from app.states.schema import Deal, DealStatus
 
 
@@ -74,16 +74,40 @@ class DealFormState(rx.State):
             self._validate_single_field(field)
 
     def _validate_single_field(self, field: str):
-        result = ValidationService.validate_field(
-            field, self.form_values.get(field), self.form_values
-        )
-        self.validation_results[field] = result.dict()
+        self.validate_form()
 
     @rx.event
     def validate_form(self):
-        results = ValidationService.validate_all(self.form_values)
-        self.validation_results = {k: v.dict() for k, v in results.items()}
-        self.touched_fields = list(self.form_values.keys())
+        results = {}
+        fields = self.form_values.keys()
+        try:
+            data = {}
+            for k, v in self.form_values.items():
+                if v == "" and k not in [
+                    "ticker",
+                    "structure",
+                    "created_at",
+                    "updated_at",
+                ]:
+                    data[k] = None
+                else:
+                    data[k] = v
+            Deal(**{**{"created_at": "", "updated_at": ""}, **data})
+            for field in self.form_values.keys():
+                results[field] = {"is_valid": True, "error_message": None}
+        except ValidationError as e:
+            logging.exception(f"Validation error during form validation: {e}")
+            for field in self.form_values.keys():
+                results[field] = {"is_valid": True, "error_message": None}
+            for error in e.errors():
+                field_name = error["loc"][0]
+                msg = error["msg"]
+                if msg.startswith("Value error, "):
+                    msg = msg.replace("Value error, ", "")
+                results[str(field_name)] = {"is_valid": False, "error_message": msg}
+        self.validation_results = results
+        if not self.touched_fields:
+            self.touched_fields = list(self.form_values.keys())
 
     @rx.event
     def reset_form(self):
@@ -95,16 +119,14 @@ class DealFormState(rx.State):
         self.form_mode = FormMode.ADD
 
     @rx.event
-    def load_deal_for_edit(self, deal_dict: dict[str, Any], mode: str = "edit"):
+    def load_deal_for_edit(self, deal: Deal, mode: str = "edit"):
         self.reset_form()
-        processed_values = {}
-        for k, v in deal_dict.items():
+        processed_values = deal.dict()
+        for k, v in processed_values.items():
             if isinstance(v, datetime):
                 processed_values[k] = v.isoformat()
             elif isinstance(v, Enum):
                 processed_values[k] = v.value
-            else:
-                processed_values[k] = v
         self.form_values = processed_values
         self.form_mode = FormMode(mode)
         self.validate_form()

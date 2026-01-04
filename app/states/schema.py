@@ -1,8 +1,10 @@
 import reflex as rx
-from sqlmodel import SQLModel, Field
-from datetime import date, datetime
-from typing import Optional
+from typing import Optional, ClassVar, TypedDict
 from enum import Enum
+from pydantic import field_validator, model_validator, BaseModel
+from datetime import datetime
+import re
+import logging
 
 
 class DealStatus(str, Enum):
@@ -11,9 +13,9 @@ class DealStatus(str, Enum):
     DRAFT = "draft"
 
 
-class Deal(SQLModel, table=True):
-    ticker: str = Field(primary_key=True)
-    structure: str = Field(default="")
+class Deal(BaseModel):
+    ticker: str
+    structure: str
     concurrent: Optional[str] = None
     id_bb_global: Optional[str] = None
     id_sedol1: Optional[str] = None
@@ -59,17 +61,137 @@ class Deal(SQLModel, table=True):
     warrants_strike: Optional[float] = None
     warrants_exp: Optional[str] = None
     status: DealStatus = DealStatus.DRAFT
-    ai_confidence_score: int = 0
+    ai_confidence_score: int = 100
     source_file: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+    created_at: str
+    updated_at: str
+    STRUCTURES: ClassVar[list[str]] = [
+        "IPO",
+        "M&A",
+        "Spin-off",
+        "Follow-on",
+        "Convertible",
+    ]
+    SECTORS: ClassVar[list[str]] = [
+        "Technology",
+        "Healthcare",
+        "Finance",
+        "Energy",
+        "Consumer",
+        "Industrials",
+        "Materials",
+        "Utilities",
+        "Real Estate",
+    ]
+    COUNTRIES: ClassVar[list[str]] = [
+        "USA",
+        "UK",
+        "Germany",
+        "Canada",
+        "Singapore",
+        "France",
+        "Japan",
+        "China",
+        "India",
+        "Australia",
+    ]
+
+    @field_validator("ticker")
+    @classmethod
+    def validate_ticker(cls, v: str) -> str:
+        if not v:
+            raise ValueError("Ticker is required")
+        if not re.match("^[A-Z0-9 ]{2,10}$", v):
+            raise ValueError("Ticker must be 2-10 uppercase alphanumeric characters")
+        return v
+
+    @field_validator("structure")
+    @classmethod
+    def validate_structure(cls, v: str) -> str:
+        if not v:
+            raise ValueError("Structure is required")
+        if v not in cls.STRUCTURES:
+            raise ValueError(f"Structure must be one of: {', '.join(cls.STRUCTURES)}")
+        return v
+
+    @field_validator("country")
+    @classmethod
+    def validate_country(cls, v: Optional[str]) -> Optional[str]:
+        if v and v not in cls.COUNTRIES:
+            raise ValueError("Invalid country selection")
+        return v
+
+    @field_validator("sector")
+    @classmethod
+    def validate_sector(cls, v: Optional[str]) -> Optional[str]:
+        if v and v not in cls.SECTORS:
+            raise ValueError("Invalid sector selection")
+        return v
+
+    @field_validator(
+        "shares_amount",
+        "offering_price",
+        "market_cap",
+        "price_on_pricing_date",
+        "vol_on_pricing_date",
+        "offer_price_usd",
+        "gross_spread",
+        "net_purchase_price",
+        "primary_shares",
+        "secondary_shares",
+    )
+    @classmethod
+    def validate_positive_numbers(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and v < 0:
+            raise ValueError("Value must be positive")
+        return v
+
+    @field_validator("fee_percent", "inst_own_pct")
+    @classmethod
+    def validate_percentages(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and (not 0 <= v <= 100):
+            raise ValueError("Percentage must be between 0-100")
+        return v
+
+    @field_validator("pricing_date", "announce_date", "warrants_exp", "pmi_date")
+    @classmethod
+    def validate_dates(cls, v: Optional[str]) -> Optional[str]:
+        if v:
+            try:
+                datetime.strptime(v, "%Y-%m-%d")
+            except ValueError as e:
+                logging.exception(f"Error: {e}")
+                raise ValueError("Invalid date format (YYYY-MM-DD)")
+        return v
+
+    @model_validator(mode="after")
+    def validate_cross_fields(self) -> "Deal":
+        if self.flag_bought and (not self.offering_price):
+            raise ValueError("Offering price is required for Bought Deals")
+        if self.warrants_min and self.warrants_min > 0:
+            if not self.warrants_strike:
+                raise ValueError("Warrants Strike required when warrants exist")
+            if not self.warrants_exp:
+                raise ValueError("Warrants Exp required when warrants exist")
+        if self.pricing_date and self.announce_date:
+            p_date = datetime.strptime(self.pricing_date, "%Y-%m-%d")
+            a_date = datetime.strptime(self.announce_date, "%Y-%m-%d")
+            if p_date < a_date:
+                raise ValueError("Pricing date cannot be before announce date")
+        total = self.shares_amount or 0
+        prim = self.primary_shares or 0
+        sec = self.secondary_shares or 0
+        if total > 0 and prim > 0 and (sec > 0):
+            if abs(total - (prim + sec)) > total * 0.01:
+                pass
+        return self
 
 
-class Alert(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+class Alert(TypedDict):
+    id: int
+    severity: str
     title: str
     message: str
-    severity: str
-    timestamp: datetime = Field(default_factory=datetime.now)
-    deal_ticker: Optional[str] = Field(default=None, foreign_key="deal.ticker")
-    is_dismissed: bool = False
+    timestamp: str
+    deal_ticker: Optional[str]
+    is_dismissed: bool

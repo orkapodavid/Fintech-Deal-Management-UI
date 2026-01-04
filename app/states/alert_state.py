@@ -28,11 +28,12 @@ class AlertState(rx.State):
         for i in range(5):
             severity = random.choice(severities)
             alert = Alert(
-                id=i + 1,
+                id=i,
                 severity=severity,
                 title=f"{severity.title()} Issue Detected",
                 message=fake.sentence(),
-                timestamp=datetime.now(),
+                timestamp=datetime.now().isoformat(),
+                deal_ticker=None,
                 is_dismissed=False,
             )
             new_alerts.append(alert)

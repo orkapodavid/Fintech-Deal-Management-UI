@@ -1,5 +1,5 @@
 import reflex as rx
-from typing import Optional
+from typing import Optional, Any
 from faker import Faker
 import random
 from datetime import datetime
@@ -29,6 +29,8 @@ class DealState(rx.State):
 
     @rx.var
     def total_pages(self) -> int:
+        if not self.filtered_deals:
+            return 1
         return -(-len(self.filtered_deals) // self.items_per_page)
 
     @rx.var
@@ -79,7 +81,7 @@ class DealState(rx.State):
         self.deals = [d for d in self.deals if d.ticker not in self.selected_deal_ids]
         self.selected_deal_ids = []
         self.filter_deals()
-        yield rx.toast("Selected deals deleted.", position="bottom-right")
+        return [rx.toast("Selected deals deleted.", position="bottom-right")]
 
     @rx.event
     def load_data(self):
@@ -91,11 +93,12 @@ class DealState(rx.State):
         structures = ["IPO", "M&A", "Spin-off", "Follow-on", "Convertible"]
         sectors = ["Technology", "Healthcare", "Finance", "Energy", "Consumer"]
         countries = ["USA", "UK", "Germany", "Canada", "Singapore"]
-        statuses = list(DealStatus)
+        statuses = [s.value for s in DealStatus]
         new_deals = []
         for _ in range(50):
             status = random.choice(statuses)
             ticker = fake.unique.lexify(text="????").upper()
+            now = datetime.now().isoformat()
             deal = Deal(
                 ticker=ticker,
                 structure=random.choice(structures),
@@ -121,9 +124,36 @@ class DealState(rx.State):
                 reg_id=f"333-{random.randint(100000, 999999)}",
                 warrants_min=random.randint(0, 5),
                 warrants_strike=round(random.uniform(10.0, 100.0), 2),
+                created_at=now,
+                updated_at=now,
+                concurrent=None,
+                id_bb_global=None,
+                id_sedol1=None,
+                action_id=None,
+                first_trade_date=None,
+                inst_own_date=None,
+                price_on_pricing_date=None,
+                vol_on_pricing_date=None,
+                offer_price_usd=None,
+                fx_rate=None,
+                fee_percent=None,
+                reported_shares=None,
+                bbg_shares=None,
+                primary_shares=None,
+                secondary_shares=None,
+                eqy_sh_out=None,
+                eqy_float=None,
+                inst_own_pct=None,
+                bics_level=None,
+                avg_daily_val=None,
+                vix=None,
+                vol_90_day=None,
+                short_int=None,
+                cdr_exch_code=None,
+                warrants_exp=None,
             )
             new_deals.append(deal)
-        self.deals = sorted(new_deals, key=lambda x: x.created_at, reverse=True)
+        self.deals = new_deals
 
     @rx.event
     def set_search_query(self, query: str):
@@ -149,7 +179,7 @@ class DealState(rx.State):
         if deal:
             self.active_review_deal = deal
             form_state = await self.get_state(DealFormState)
-            form_state.load_deal_for_edit(deal.dict(), "review")
+            form_state.load_deal_for_edit(deal, "review")
 
     upload_tab: str = "upload"
 
@@ -169,7 +199,7 @@ class DealState(rx.State):
     @rx.event
     def save_draft(self, form_data: dict):
         self._save_deal(form_data, DealStatus.DRAFT)
-        yield rx.toast("Deal saved as draft.", position="bottom-right", duration=3000)
+        return rx.toast("Deal saved as draft.", position="bottom-right", duration=3000)
 
     @rx.event
     async def approve_current_deal(self):
@@ -177,23 +207,27 @@ class DealState(rx.State):
             deal_ticker = self.active_review_deal.ticker
             form_state = await self.get_state(DealFormState)
             updated_values = form_state.form_values
-            deal_idx = next(
-                (i for i, d in enumerate(self.deals) if d.ticker == deal_ticker), -1
-            )
-            if deal_idx >= 0:
-                deal = self.deals[deal_idx]
-                for key, value in updated_values.items():
-                    if hasattr(deal, key):
-                        setattr(deal, key, value)
-                deal.status = DealStatus.ACTIVE
-                deal.updated_at = datetime.now()
-                self.deals = list(self.deals)
+            for i, d in enumerate(self.deals):
+                if d.ticker == deal_ticker:
+                    for k, v in updated_values.items():
+                        if v == "":
+                            v = None
+                        if hasattr(d, k):
+                            setattr(d, k, v)
+                    d.status = DealStatus.ACTIVE
+                    d.updated_at = datetime.now().isoformat()
+                    self.deals[i] = d
+                    break
             self.active_review_deal = None
             form_state.reset_form()
             self.filter_deals()
-            yield rx.toast(
-                "Deal approved and activated.", position="bottom-right", duration=3000
-            )
+            return [
+                rx.toast(
+                    "Deal approved and activated.",
+                    position="bottom-right",
+                    duration=3000,
+                )
+            ]
 
     @rx.event
     def reject_current_deal(self):
@@ -203,14 +237,18 @@ class DealState(rx.State):
             self.active_review_deal = None
             self.form_data = {}
             self.filter_deals()
-            yield rx.toast(
-                "Deal rejected and removed.", position="bottom-right", duration=3000
-            )
+            return [
+                rx.toast(
+                    "Deal rejected and removed.", position="bottom-right", duration=3000
+                )
+            ]
 
     def _save_deal(self, form_data: dict, status: DealStatus):
+        processed_data = form_data.copy()
         bool_fields = ["flag_bought", "flag_clean_up", "flag_top_up"]
         for field in bool_fields:
-            form_data[field] = form_data.get(field) == "on"
+            val = processed_data.get(field)
+            processed_data[field] = val == "on" or val is True
         float_fields = [
             "shares_amount",
             "offering_price",
@@ -219,35 +257,57 @@ class DealState(rx.State):
             "warrants_strike",
         ]
         for field in float_fields:
-            if form_data.get(field) == "":
-                form_data[field] = None
-        ticker = form_data.get("ticker", "UNKNOWN")
-        existing_idx = next(
-            (i for i, d in enumerate(self.deals) if d.ticker == ticker), -1
+            if processed_data.get(field) == "":
+                processed_data[field] = None
+        ticker = processed_data.get("ticker")
+        if not ticker:
+            ticker = fake.unique.lexify(text="????").upper()
+            processed_data["ticker"] = ticker
+        now = datetime.now().isoformat()
+        existing_deal_index = next(
+            (i for i, d in enumerate(self.deals) if d.ticker == ticker), None
         )
-        if existing_idx >= 0:
-            for key, value in form_data.items():
-                if hasattr(self.deals[existing_idx], key):
-                    setattr(self.deals[existing_idx], key, value)
-            self.deals[existing_idx].status = status
-            self.deals[existing_idx].updated_at = datetime.now()
+        if existing_deal_index is not None:
+            current_deal = self.deals[existing_deal_index]
+            for k, v in processed_data.items():
+                if hasattr(current_deal, k):
+                    setattr(current_deal, k, v)
+            current_deal.status = status
+            current_deal.updated_at = now
+            self.deals[existing_deal_index] = current_deal
         else:
-            if not form_data.get("ticker"):
-                form_data["ticker"] = fake.unique.lexify(text="????").upper()
-            deal = Deal(**form_data)
-            deal.status = status
-            deal.ai_confidence_score = (
-                100 if status == DealStatus.DRAFT else random.randint(80, 100)
-            )
-            self.deals.insert(0, deal)
-        self.deals = list(self.deals)
+            processed_data["status"] = status
+            processed_data["created_at"] = now
+            processed_data["updated_at"] = now
+            if "ai_confidence_score" not in processed_data:
+                processed_data["ai_confidence_score"] = (
+                    100 if status == DealStatus.DRAFT else random.randint(80, 100)
+                )
+            new_deal = Deal(**processed_data)
+            self.deals.append(new_deal)
         self.filter_deals()
+        return rx.noop()
 
     @rx.event
     async def submit_new_deal(self, form_data: dict):
         form_state = await self.get_state(DealFormState)
         merged_data = {**form_state.form_values, **form_data}
-        self._save_deal(merged_data, DealStatus.PENDING_REVIEW)
-        yield rx.toast(
-            "Deal submitted for review.", position="bottom-right", duration=3000
-        )
+        update = self._save_deal(merged_data, DealStatus.PENDING_REVIEW)
+        return [
+            update,
+            rx.toast(
+                "Deal submitted for review.", position="bottom-right", duration=3000
+            ),
+        ]
+
+    @rx.event
+    async def submit_new_deal(self, form_data: dict):
+        form_state = await self.get_state(DealFormState)
+        merged_data = {**form_state.form_values, **form_data}
+        update = self._save_deal(merged_data, DealStatus.PENDING_REVIEW)
+        return [
+            update,
+            rx.toast(
+                "Deal submitted for review.", position="bottom-right", duration=3000
+            ),
+        ]

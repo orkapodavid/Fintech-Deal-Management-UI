@@ -190,7 +190,7 @@ def deals_page() -> rx.Component:
                                     class_name="px-3 py-4",
                                 ),
                                 rx.el.td(
-                                    deal.shares_amount,
+                                    deal.shares_amount.to_string(),
                                     class_name="px-3 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-mono",
                                 ),
                                 rx.el.td(
@@ -202,11 +202,11 @@ def deals_page() -> rx.Component:
                                     ),
                                 ),
                                 rx.el.td(
-                                    deal.pricing_date,
+                                    deal.pricing_date.to_string(),
                                     class_name="px-3 py-4 whitespace-nowrap text-sm text-gray-500 text-right",
                                 ),
                                 rx.el.td(
-                                    deal.announce_date,
+                                    deal.announce_date.to_string(),
                                     class_name="px-3 py-4 whitespace-nowrap text-sm text-gray-500 text-right",
                                 ),
                                 rx.el.td(
@@ -224,7 +224,7 @@ def deals_page() -> rx.Component:
                                 rx.el.td(
                                     rx.el.div(
                                         rx.el.span(
-                                            f"{deal.ai_confidence_score}%",
+                                            deal.ai_confidence_score.to_string() + "%",
                                             class_name=rx.cond(
                                                 deal.ai_confidence_score >= 80,
                                                 "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800",
