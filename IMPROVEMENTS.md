@@ -1,7 +1,7 @@
 # Improvements & Refactoring Plan
 
 ## 1. Implement Persistent Storage
-*   **What**: Replace the in-memory `self.deals` list in `DealState` with actual database queries using `SQLModel` with a SQLite or PostgreSQL backend.
+*   **What**: Replace the in-memory `self.deals` list in `DealState` with actual database queries using `SQLModel` with a SQLite backend.
 *   **Why**: Currently, all data is lost on server restart. Reflex supports `rx.Model` (SQLModel) natively.
 *   **Where**: `app/states/deal_state.py` (replace list operations with `session.add`, `session.exec`), `rxconfig.py` (database config).
 
