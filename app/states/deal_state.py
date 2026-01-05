@@ -338,6 +338,7 @@ class DealState(rx.State):
             self.active_review_deal = deal
             form_state = await self.get_state(DealFormState)
             form_state.load_deal_for_edit(deal, "review")
+            yield rx.toast(f"Viewing deal: {deal_ticker}", position="bottom-right")
 
     upload_tab: str = "upload"
 
