@@ -99,12 +99,21 @@ class DealState(rx.State):
             status = random.choice(statuses)
             ticker = fake.unique.lexify(text="????").upper()
             now = datetime.now().isoformat()
+            warrants_min = random.randint(0, 5)
+            if warrants_min > 0:
+                warrants_strike = round(random.uniform(10.0, 100.0), 2)
+                warrants_exp = fake.date_this_year().isoformat()
+            else:
+                warrants_strike = None
+                warrants_exp = None
+            announce_dt = fake.date_this_year()
+            pricing_dt = fake.date_between(start_date=announce_dt, end_date="+30d")
             deal = Deal(
                 ticker=ticker,
                 structure=random.choice(structures),
                 company_name=fake.company(),
-                pricing_date=fake.date_this_year().isoformat(),
-                announce_date=fake.date_this_year().isoformat(),
+                pricing_date=pricing_dt.isoformat(),
+                announce_date=announce_dt.isoformat(),
                 pmi_date=fake.date_this_year().isoformat(),
                 shares_amount=round(random.uniform(1.0, 50.0), 2),
                 offering_price=round(random.uniform(10.0, 500.0), 2),
@@ -122,8 +131,9 @@ class DealState(rx.State):
                 source_file=f"{ticker}_term_sheet.pdf",
                 deal_description=fake.paragraph(nb_sentences=3),
                 reg_id=f"333-{random.randint(100000, 999999)}",
-                warrants_min=random.randint(0, 5),
-                warrants_strike=round(random.uniform(10.0, 100.0), 2),
+                warrants_min=warrants_min,
+                warrants_strike=warrants_strike,
+                warrants_exp=warrants_exp,
                 created_at=now,
                 updated_at=now,
                 concurrent=None,
@@ -150,7 +160,6 @@ class DealState(rx.State):
                 vol_90_day=None,
                 short_int=None,
                 cdr_exch_code=None,
-                warrants_exp=None,
             )
             new_deals.append(deal)
         self.deals = new_deals
