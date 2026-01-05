@@ -1,6 +1,31 @@
 import reflex as rx
 from app.states.deal_state import DealState
 from app.components.alert_sidebar import alert_sidebar
+from app.components.confirmation_dialog import confirmation_dialog
+
+
+def sortable_header(label: str, column: str, align: str = "left") -> rx.Component:
+    return rx.el.th(
+        rx.el.div(
+            label,
+            rx.cond(
+                DealState.sort_column == column,
+                rx.cond(
+                    DealState.sort_direction == "asc",
+                    rx.icon("chevron-up", size=16, class_name="ml-1 text-blue-600"),
+                    rx.icon("chevron-down", size=16, class_name="ml-1 text-blue-600"),
+                ),
+                rx.icon(
+                    "arrow-up-down",
+                    size=16,
+                    class_name="ml-1 text-gray-300 opacity-50 group-hover:opacity-100",
+                ),
+            ),
+            class_name=f"flex items-center gap-1 cursor-pointer group hover:text-gray-700 {('justify-end' if align == 'right' else '')}",
+        ),
+        on_click=lambda: DealState.sort_by_column(column),
+        class_name=f"px-3 py-3 text-{align} text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50 select-none hover:bg-gray-100 transition-colors",
+    )
 
 
 def badge(text: str, color_scheme: str = "gray") -> rx.Component:
@@ -22,35 +47,42 @@ def deals_page() -> rx.Component:
         rx.el.div(
             rx.el.div(
                 rx.el.div(
-                    rx.el.button(
-                        rx.icon("filter", size=16, class_name="mr-2"),
-                        "Filter",
-                        class_name="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition-colors",
-                    ),
                     rx.el.div(
-                        rx.el.span(
-                            "Sector: Tech",
-                            rx.icon(
-                                "x",
-                                size=12,
-                                class_name="ml-1.5 text-blue-500 hover:text-blue-700",
-                            ),
-                            class_name="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100 mr-2 cursor-pointer hover:bg-blue-100 transition-colors",
+                        rx.icon("search", size=16, class_name="text-gray-400 mr-2"),
+                        rx.el.input(
+                            placeholder="Search deals...",
+                            on_change=DealState.set_search_query.debounce(300),
+                            class_name="border-none focus:ring-0 text-sm w-48 p-0 text-gray-700 placeholder:text-gray-400",
+                            default_value=DealState.search_query,
                         ),
-                        rx.el.span(
-                            "Date: Today",
-                            rx.icon(
-                                "x",
-                                size=12,
-                                class_name="ml-1.5 text-gray-500 hover:text-gray-700",
-                            ),
-                            class_name="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-700 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors",
-                        ),
-                        rx.el.button(
-                            "+ Add Filter",
-                            class_name="ml-2 text-xs font-medium text-blue-600 hover:text-blue-800",
-                        ),
-                        class_name="ml-4 flex items-center",
+                        class_name="flex items-center bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 mr-4",
+                    ),
+                    rx.el.select(
+                        rx.el.option("All Status", value="all"),
+                        rx.el.option("Active", value="active"),
+                        rx.el.option("Pending Review", value="pending_review"),
+                        rx.el.option("Draft", value="draft"),
+                        value=DealState.filter_status,
+                        on_change=DealState.set_filter_status,
+                        class_name="block w-32 rounded-md border-gray-300 py-1.5 text-sm focus:border-blue-500 focus:ring-blue-500 mr-2 bg-white shadow-sm cursor-pointer appearance-none",
+                    ),
+                    rx.el.input(
+                        type="date",
+                        on_change=DealState.set_filter_start_date,
+                        class_name="block rounded-md border-gray-300 py-1.5 text-sm focus:border-blue-500 focus:ring-blue-500 mr-2 shadow-sm text-gray-600",
+                        default_value=DealState.filter_start_date,
+                    ),
+                    rx.el.span("-", class_name="text-gray-400 mx-1"),
+                    rx.el.input(
+                        type="date",
+                        on_change=DealState.set_filter_end_date,
+                        class_name="block rounded-md border-gray-300 py-1.5 text-sm focus:border-blue-500 focus:ring-blue-500 mr-4 shadow-sm text-gray-600",
+                        default_value=DealState.filter_end_date,
+                    ),
+                    rx.el.button(
+                        "Clear",
+                        on_click=DealState.clear_filters,
+                        class_name="text-sm text-gray-500 hover:text-gray-700 underline decoration-gray-400",
                     ),
                     class_name="flex items-center",
                 ),
@@ -58,18 +90,27 @@ def deals_page() -> rx.Component:
                     rx.el.button(
                         rx.icon("download", size=16, class_name="mr-2"),
                         "Export",
+                        on_click=DealState.export_deals,
                         class_name="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 mr-4 transition-colors",
                     ),
                     rx.el.button(
                         rx.icon("pencil", size=16, class_name="mr-2"),
                         "Edit Selected",
+                        on_click=DealState.edit_selected_deal,
                         class_name="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 mr-4 transition-colors",
                     ),
                     rx.el.button(
                         rx.icon("trash-2", size=16, class_name="mr-2"),
                         "Delete",
-                        on_click=DealState.delete_selected_deals,
+                        on_click=DealState.request_delete,
                         class_name="inline-flex items-center px-3 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors",
+                    ),
+                    confirmation_dialog(
+                        DealState.show_delete_dialog,
+                        "Delete Deals",
+                        "Are you sure you want to delete the selected deals? This action cannot be undone.",
+                        DealState.confirm_delete,
+                        DealState.cancel_delete,
                     ),
                     class_name="flex items-center",
                 ),
@@ -88,50 +129,20 @@ def deals_page() -> rx.Component:
                                 ),
                                 class_name="pl-6 pr-3 py-3 text-left w-10 bg-gray-50",
                             ),
-                            rx.el.th(
-                                "Ticker",
-                                class_name="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50",
-                            ),
-                            rx.el.th(
-                                "Structure",
-                                class_name="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50",
-                            ),
+                            sortable_header("Ticker", "ticker"),
+                            sortable_header("Structure", "structure"),
                             rx.el.th(
                                 "Flags",
                                 class_name="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50",
                             ),
-                            rx.el.th(
-                                "Shares (M)",
-                                class_name="px-3 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50",
-                            ),
-                            rx.el.th(
-                                "Offer Price",
-                                class_name="px-3 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50",
-                            ),
-                            rx.el.th(
-                                "Pricing Date",
-                                class_name="px-3 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50",
-                            ),
-                            rx.el.th(
-                                "Announce Date",
-                                class_name="px-3 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50",
-                            ),
-                            rx.el.th(
-                                "Sector",
-                                class_name="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50",
-                            ),
-                            rx.el.th(
-                                "Country",
-                                class_name="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50",
-                            ),
-                            rx.el.th(
-                                "Mkt Cap (M)",
-                                class_name="px-3 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50",
-                            ),
-                            rx.el.th(
-                                "Conf.",
-                                class_name="px-3 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider bg-gray-50",
-                            ),
+                            sortable_header("Shares (M)", "shares_amount", "right"),
+                            sortable_header("Offer Price", "offering_price", "right"),
+                            sortable_header("Pricing Date", "pricing_date", "right"),
+                            sortable_header("Announce Date", "announce_date", "right"),
+                            sortable_header("Sector", "sector"),
+                            sortable_header("Country", "country"),
+                            sortable_header("Mkt Cap (M)", "market_cap", "right"),
+                            sortable_header("Conf.", "ai_confidence_score", "center"),
                             class_name="border-b border-gray-200",
                         )
                     ),

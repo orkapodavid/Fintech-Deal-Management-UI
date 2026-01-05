@@ -5,19 +5,72 @@ import random
 from datetime import datetime
 from app.states.schema import Deal, DealStatus
 from app.states.deal_form_state import DealFormState
+from app.states.alert_state import AlertState
 
 fake = Faker()
 
 
 class DealState(rx.State):
     deals: list[Deal] = []
-    filtered_deals: list[Deal] = []
     search_query: str = ""
+    sort_column: str = "pricing_date"
+    sort_direction: str = "desc"
+    filter_status: str = "all"
+    filter_start_date: str = ""
+    filter_end_date: str = ""
     active_review_deal: Optional[Deal] = None
     form_data: dict = {}
     current_page: int = 1
     items_per_page: int = 10
     selected_deal_ids: list[str] = []
+
+    @rx.var
+    def filtered_deals(self) -> list[Deal]:
+        deals = self.deals
+        if self.search_query:
+            q = self.search_query.lower()
+            deals = [
+                d
+                for d in deals
+                if d.ticker
+                and q in d.ticker.lower()
+                or (d.company_name and q in d.company_name.lower())
+                or (d.sector and q in d.sector.lower())
+                or (d.country and q in d.country.lower())
+            ]
+        if self.filter_status and self.filter_status != "all":
+            deals = [d for d in deals if d.status == self.filter_status]
+        if self.filter_start_date:
+            deals = [
+                d
+                for d in deals
+                if d.pricing_date and d.pricing_date >= self.filter_start_date
+            ]
+        if self.filter_end_date:
+            deals = [
+                d
+                for d in deals
+                if d.pricing_date and d.pricing_date <= self.filter_end_date
+            ]
+        if self.sort_column:
+
+            @rx.event
+            def sort_key(d):
+                val = getattr(d, self.sort_column, None)
+                if val is None:
+                    if self.sort_column in [
+                        "shares_amount",
+                        "offering_price",
+                        "market_cap",
+                        "ai_confidence_score",
+                    ]:
+                        return -1.0
+                    return ""
+                return val
+
+            reverse = self.sort_direction == "desc"
+            deals = sorted(deals, key=sort_key, reverse=reverse)
+        return deals
 
     @rx.var
     def pending_deals(self) -> list[Deal]:
@@ -76,18 +129,88 @@ class DealState(rx.State):
         else:
             self.selected_deal_ids.append(deal_ticker)
 
+    show_delete_dialog: bool = False
+
+    @rx.event
+    def request_delete(self):
+        if not self.selected_deal_ids:
+            return rx.toast("No deals selected.", position="bottom-right")
+        self.show_delete_dialog = True
+
+    @rx.event
+    def cancel_delete(self):
+        self.show_delete_dialog = False
+
+    @rx.event
+    def confirm_delete(self):
+        self.delete_selected_deals()
+        self.show_delete_dialog = False
+
     @rx.event
     def delete_selected_deals(self):
         self.deals = [d for d in self.deals if d.ticker not in self.selected_deal_ids]
         self.selected_deal_ids = []
-        self.filter_deals()
         return [rx.toast("Selected deals deleted.", position="bottom-right")]
+
+    @rx.event
+    def export_deals(self):
+        import csv
+        import io
+
+        deals_to_export = []
+        if self.selected_deal_ids:
+            deals_to_export = [
+                d for d in self.deals if d.ticker in self.selected_deal_ids
+            ]
+        else:
+            deals_to_export = self.filtered_deals
+        if not deals_to_export:
+            return rx.toast("No deals to export.", position="bottom-right")
+        output = io.StringIO()
+        writer = csv.writer(output)
+        headers = [
+            "Ticker",
+            "Structure",
+            "Company",
+            "Status",
+            "Pricing Date",
+            "Amount (M)",
+            "Price",
+            "Sector",
+            "Country",
+        ]
+        writer.writerow(headers)
+        for d in deals_to_export:
+            writer.writerow(
+                [
+                    d.ticker,
+                    d.structure,
+                    d.company_name,
+                    d.status.value,
+                    d.pricing_date,
+                    d.shares_amount,
+                    d.offering_price,
+                    d.sector,
+                    d.country,
+                ]
+            )
+        return rx.download(data=output.getvalue(), filename="deals_export.csv")
+
+    @rx.event
+    async def edit_selected_deal(self):
+        if len(self.selected_deal_ids) != 1:
+            return rx.toast("Select exactly one deal to edit.", position="bottom-right")
+        ticker = self.selected_deal_ids[0]
+        deal = next((d for d in self.deals if d.ticker == ticker), None)
+        if deal:
+            form_state = await self.get_state(DealFormState)
+            form_state.load_deal_for_edit(deal, mode="edit")
+            return rx.redirect("/add")
 
     @rx.event
     def load_data(self):
         if not self.deals:
             self._generate_fake_data()
-        self.filter_deals()
 
     def _generate_fake_data(self):
         structures = ["IPO", "M&A", "Spin-off", "Follow-on", "Convertible"]
@@ -168,19 +291,39 @@ class DealState(rx.State):
     def set_search_query(self, query: str):
         self.search_query = query
         self.current_page = 1
-        self.filter_deals()
 
     @rx.event
-    def filter_deals(self):
-        if not self.search_query:
-            self.filtered_deals = self.deals
+    def sort_by_column(self, column: str):
+        if self.sort_column == column:
+            self.sort_direction = "desc" if self.sort_direction == "asc" else "asc"
         else:
-            query = self.search_query.lower()
-            self.filtered_deals = [
-                d
-                for d in self.deals
-                if query in d.ticker.lower() or query in (d.company_name or "").lower()
-            ]
+            self.sort_column = column
+            self.sort_direction = "asc"
+
+    @rx.event
+    def set_filter_status(self, status: str):
+        self.filter_status = status
+        self.current_page = 1
+
+    @rx.event
+    def set_filter_start_date(self, date: str):
+        self.filter_start_date = date
+        self.current_page = 1
+
+    @rx.event
+    def set_filter_end_date(self, date: str):
+        self.filter_end_date = date
+        self.current_page = 1
+
+    @rx.event
+    def clear_filters(self):
+        self.search_query = ""
+        self.filter_status = "all"
+        self.filter_start_date = ""
+        self.filter_end_date = ""
+        self.sort_column = "pricing_date"
+        self.sort_direction = "desc"
+        self.current_page = 1
 
     @rx.event
     async def select_deal_for_review(self, deal_ticker: str):
@@ -229,7 +372,6 @@ class DealState(rx.State):
                     break
             self.active_review_deal = None
             form_state.reset_form()
-            self.filter_deals()
             return [
                 rx.toast(
                     "Deal approved and activated.",
@@ -245,7 +387,6 @@ class DealState(rx.State):
             self.deals = [d for d in self.deals if d.ticker != deal_ticker]
             self.active_review_deal = None
             self.form_data = {}
-            self.filter_deals()
             return [
                 rx.toast(
                     "Deal rejected and removed.", position="bottom-right", duration=3000
@@ -294,7 +435,6 @@ class DealState(rx.State):
                 )
             new_deal = Deal(**processed_data)
             self.deals.append(new_deal)
-        self.filter_deals()
         return rx.noop()
 
     @rx.event
@@ -310,13 +450,51 @@ class DealState(rx.State):
         ]
 
     @rx.event
-    async def submit_new_deal(self, form_data: dict):
-        form_state = await self.get_state(DealFormState)
-        merged_data = {**form_state.form_values, **form_data}
-        update = self._save_deal(merged_data, DealStatus.PENDING_REVIEW)
-        return [
-            update,
-            rx.toast(
-                "Deal submitted for review.", position="bottom-right", duration=3000
-            ),
-        ]
+    def refresh_data(self):
+        """Reloads data from the backend."""
+        self.load_data()
+        return rx.toast(
+            "Data refreshed successfully.",
+            position="bottom-right",
+            duration=2000,
+            style={
+                "background-color": "#EFF6FF",
+                "color": "#1E40AF",
+                "border": "1px solid #BFDBFE",
+            },
+        )
+
+    @rx.event
+    def show_settings(self):
+        """Displays a settings toast placeholder."""
+        return rx.toast(
+            "Settings panel is under construction.",
+            position="bottom-right",
+            duration=3000,
+            style={
+                "background-color": "#F3F4F6",
+                "color": "#374151",
+                "border": "1px solid #E5E7EB",
+            },
+        )
+
+    @rx.event
+    def show_notifications(self):
+        """Show notifications info."""
+        return rx.toast(
+            "You have new notifications.", position="bottom-right", duration=2000
+        )
+
+    @rx.event
+    def logout(self):
+        """Simulates user logout."""
+        return rx.toast(
+            "Logging out...",
+            position="bottom-right",
+            duration=2000,
+            style={
+                "background-color": "#FEF2F2",
+                "color": "#991B1B",
+                "border": "1px solid #FECACA",
+            },
+        )

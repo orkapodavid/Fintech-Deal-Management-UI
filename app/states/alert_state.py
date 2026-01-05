@@ -38,3 +38,7 @@ class AlertState(rx.State):
             )
             new_alerts.append(alert)
         self.alerts = new_alerts
+
+    @rx.var
+    def unread_count(self) -> int:
+        return len([a for a in self.alerts if not a.get("is_dismissed", False)])

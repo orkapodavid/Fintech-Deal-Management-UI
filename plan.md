@@ -1,27 +1,34 @@
-# HDP Deal Management App - Refactoring Plan
+# HDP Deal Management App - Bug Fix Plan
 
-## Phase 1: Implement Persistent Storage with SQLModel ✅
-- [x] Configure SQLite database in rxconfig.py with proper db_url
-- [x] Update Deal and Alert models to use rx.Model base class for database integration
-- [x] Refactor DealState to use database sessions (rx.session) for CRUD operations
-- [x] Replace in-memory list operations with session.add(), session.exec() queries
-- [x] Add database initialization on app startup with sample data seeding
-
----
-
-## Phase 2: Refactor Validation to Pydantic & Clean Up Code ✅
-- [x] Move validation rules from ValidationService into Deal model using Pydantic @field_validator decorators
-- [x] Add cross-field validation using @model_validator for complex rules (dates, shares totals)
-- [x] Update DealFormState to use model-based validation instead of ValidationService
-- [x] Remove app/states/validation.py file after migration
-- [x] Remove PyGithub from requirements.txt (unused dependency)
-- [x] Delete app/components/deal_form.py (superseded by deal_form_component.py)
+## Phase 1: Search, Sorting & Filter System ✅
+- [x] Connect search input in navbar/deals_page to DealState.set_search_query handler
+- [x] Add sort state variables (sort_column, sort_direction) to DealState
+- [x] Implement sort_deals() event handler with ascending/descending toggle
+- [x] Make column headers clickable with sort direction indicators (▲/▼)
+- [x] Add status filter state variable and filter by status functionality
+- [x] Add date range filter variables (filter_start_date, filter_end_date)
+- [x] Chain filters with search and sorting in filtered_deals computed property
+- [x] Add clear_filters() event handler
 
 ---
 
-## Phase 3: Decouple Form Component & Add Testing ✅
-- [x] Refactor deal_form_component.py to accept state/handlers as parameters
-- [x] Create generic form field factory that works with any state class
-- [x] Create tests/ directory structure with pytest configuration
-- [x] Add unit tests for Deal model validation (ticker, structure, dates, numeric fields)
-- [x] Add integration tests for DealState CRUD operations with database
+## Phase 2: Alerts Panel & Action Buttons ✅
+- [x] Verify AlertState is properly integrated in deals_page layout
+- [x] Fix alert sidebar toggle visibility and rendering
+- [x] Ensure alerts are populated and displayed correctly
+- [x] Implement export_deals() handler to generate CSV download
+- [x] Add edit_deal() handler that navigates to form with pre-filled data
+- [x] Create delete confirmation dialog state and component
+- [x] Implement delete_deal() with confirmation flow
+- [x] Wire up bulk action buttons with selection validation
+
+---
+
+## Phase 3: Header Icons & Confirmation Dialogs ✅
+- [x] Add refresh functionality to refresh icon in navbar
+- [x] Implement settings icon action (toggle settings panel or navigate)
+- [x] Add notification bell functionality linked to AlertState
+- [x] Create reusable confirmation dialog component
+- [x] Integrate confirmation dialog with all destructive actions
+- [x] Add visual feedback (hover states, loading indicators) to all interactive elements
+- [x] Final integration testing across all features

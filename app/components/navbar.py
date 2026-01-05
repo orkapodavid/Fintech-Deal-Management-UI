@@ -1,4 +1,6 @@
 import reflex as rx
+from app.states.deal_state import DealState
+from app.states.alert_state import AlertState
 
 
 def navbar_link(text: str, url: str) -> rx.Component:
@@ -39,21 +41,58 @@ def navbar() -> rx.Component:
                     ),
                     rx.el.input(
                         placeholder="Search deals, tickers...",
+                        on_change=DealState.set_search_query.debounce(300),
                         class_name="bg-gray-900 border border-gray-700 text-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-64 pl-10 p-2 placeholder-gray-500",
+                        default_value=DealState.search_query,
                     ),
                     class_name="relative hidden lg:block mr-6",
                 ),
-                rx.icon(
-                    "bell",
-                    class_name="w-5 h-5 text-gray-400 hover:text-white cursor-pointer mr-4",
+                rx.el.button(
+                    rx.icon(
+                        "refresh-cw",
+                        class_name="w-5 h-5 text-gray-400 group-hover:text-white transition-colors",
+                    ),
+                    on_click=DealState.refresh_data,
+                    class_name="group p-2 rounded-full hover:bg-gray-800 transition-colors mr-2",
+                    title="Refresh Data",
                 ),
-                rx.icon(
-                    "settings",
-                    class_name="w-5 h-5 text-gray-400 hover:text-white cursor-pointer mr-4",
+                rx.el.button(
+                    rx.el.div(
+                        rx.icon(
+                            "bell",
+                            class_name="w-5 h-5 text-gray-400 group-hover:text-white transition-colors",
+                        ),
+                        rx.cond(
+                            AlertState.unread_count > 0,
+                            rx.el.span(
+                                AlertState.unread_count,
+                                class_name="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-[#0f1115]",
+                            ),
+                            None,
+                        ),
+                        class_name="relative",
+                    ),
+                    on_click=AlertState.toggle_sidebar,
+                    class_name="group p-2 rounded-full hover:bg-gray-800 transition-colors mr-2",
+                    title="Notifications",
+                ),
+                rx.el.button(
+                    rx.icon(
+                        "settings",
+                        class_name="w-5 h-5 text-gray-400 group-hover:text-white transition-colors",
+                    ),
+                    on_click=DealState.show_settings,
+                    class_name="group p-2 rounded-full hover:bg-gray-800 transition-colors mr-2",
+                    title="Settings",
                 ),
                 rx.el.div(
-                    rx.icon("user", class_name="w-5 h-5 text-gray-800"),
-                    class_name="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center border border-gray-600 cursor-pointer",
+                    rx.el.button(
+                        rx.icon("user", class_name="w-5 h-5 text-gray-800"),
+                        class_name="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center border border-gray-600 hover:border-gray-400 transition-colors",
+                    ),
+                    class_name="relative ml-2 group cursor-pointer",
+                    on_click=DealState.logout,
+                    title="Log Out (Demo)",
                 ),
                 class_name="flex items-center",
             ),
