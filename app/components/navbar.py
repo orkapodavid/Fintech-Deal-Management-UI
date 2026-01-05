@@ -73,7 +73,7 @@ def navbar() -> rx.Component:
                         class_name="relative",
                     ),
                     on_click=AlertState.toggle_sidebar,
-                    class_name="group p-2 rounded-full hover:bg-gray-800 transition-colors mr-2",
+                    class_name="group p-2 rounded-full hover:bg-gray-800 transition-colors mx-1",
                     title="Notifications",
                 ),
                 rx.el.button(
@@ -82,15 +82,15 @@ def navbar() -> rx.Component:
                         class_name="w-5 h-5 text-gray-400 group-hover:text-white transition-colors",
                     ),
                     on_click=DealState.show_settings,
-                    class_name="group p-2 rounded-full hover:bg-gray-800 transition-colors mr-2",
+                    class_name="group p-2 rounded-full hover:bg-gray-800 transition-colors mx-1",
                     title="Settings",
                 ),
                 rx.el.div(
                     rx.el.button(
-                        rx.icon("user", class_name="w-5 h-5 text-gray-800"),
+                        rx.icon("user", class_name="w-5 h-5 stroke-gray-800"),
                         class_name="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center border border-gray-600 hover:border-gray-400 transition-colors",
                     ),
-                    class_name="relative ml-2 group cursor-pointer",
+                    class_name="relative ml-2 group cursor-pointer mx-1",
                     on_click=DealState.logout,
                     title="Log Out (Demo)",
                 ),

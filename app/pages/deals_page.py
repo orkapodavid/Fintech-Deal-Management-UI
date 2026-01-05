@@ -166,6 +166,9 @@ def deals_page() -> rx.Component:
                                 rx.el.td(
                                     rx.el.span(
                                         deal.ticker,
+                                        on_click=lambda: DealState.select_deal_for_review(
+                                            deal.ticker
+                                        ),
                                         class_name="font-semibold text-blue-600 cursor-pointer hover:underline",
                                     ),
                                     class_name="px-3 py-4 whitespace-nowrap text-sm",
@@ -213,12 +216,12 @@ def deals_page() -> rx.Component:
                                     ),
                                 ),
                                 rx.el.td(
-                                    deal.pricing_date.to_string(),
-                                    class_name="px-3 py-4 whitespace-nowrap text-sm text-gray-500 text-right",
+                                    rx.el.span(deal.pricing_date),
+                                    class_name="px-3 py-4 whitespace-nowrap text-sm text-gray-500 text-right font-mono",
                                 ),
                                 rx.el.td(
-                                    deal.announce_date.to_string(),
-                                    class_name="px-3 py-4 whitespace-nowrap text-sm text-gray-500 text-right",
+                                    rx.el.span(deal.announce_date),
+                                    class_name="px-3 py-4 whitespace-nowrap text-sm text-gray-500 text-right font-mono",
                                 ),
                                 rx.el.td(
                                     deal.sector,

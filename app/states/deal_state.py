@@ -157,6 +157,12 @@ class DealState(rx.State):
         import csv
         import io
 
+        yield rx.toast(
+            "Export started",
+            description="Generating CSV and starting download...",
+            position="bottom-right",
+            duration=3000,
+        )
         deals_to_export = []
         if self.selected_deal_ids:
             deals_to_export = [
