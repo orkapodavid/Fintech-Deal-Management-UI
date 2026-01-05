@@ -79,7 +79,11 @@ class DealFormState(rx.State):
     @rx.event
     def validate_form(self):
         results = {}
-        fields = self.form_values.keys()
+        if not self.form_values.get("ticker") or not self.form_values.get("structure"):
+            for field in self.form_values.keys():
+                results[field] = {"is_valid": True, "error_message": None}
+            self.validation_results = results
+            return
         try:
             data = {}
             for k, v in self.form_values.items():
@@ -96,7 +100,7 @@ class DealFormState(rx.State):
             for field in self.form_values.keys():
                 results[field] = {"is_valid": True, "error_message": None}
         except ValidationError as e:
-            logging.exception(f"Validation error during form validation: {e}")
+            logging.exception(f"Validation error details: {e}")
             for field in self.form_values.keys():
                 results[field] = {"is_valid": True, "error_message": None}
             for error in e.errors():
