@@ -1,0 +1,311 @@
+---
+description: Expert guidance for wrapping React components and creating custom components in Reflex
+globs: ["**/*.py"]
+---
+
+# Reflex Custom Components & Wrapping React
+
+## Overview
+
+Reflex allows you to extend your application by wrapping any React component from the npm ecosystem or creating your own custom components. This guide covers the process of finding, wrapping, and publishing components.
+
+## 1. Custom Components Basics
+
+Reflex components inherit from `rx.Component` (SSR compatible) or `rx.NoSSRComponent` (client-side only).
+
+### Prerequisites for Publishing
+- Account with a Python package index (e.g., PyPI)
+- Publishing utility: `twine` or `uv`
+
+### Component Lifecycle
+1. `reflex component init` - Create new project
+2. Develop and test
+3. `reflex component build` - Build distribution
+4. Publish to PyPI
+
+## 2. Wrapping React Components
+
+To use a React component in Reflex, you create a Python class that maps to the React component's props and behavior.
+
+### Basic Wrapper Structure
+
+```python
+import reflex as rx
+
+class MyComponent(rx.Component):
+    # NPM package name (pin version recommended)
+    library = "react-colorful@5.6.1"
+    
+    # Component to import from package
+    tag = "HexColorPicker"
+    
+    # Optional alias (if name conflicts exist)
+    alias = "ColorPicker"
+    
+    # True if default export (import Default from 'lib')
+    is_default = False
+
+    # Additional library dependencies
+    lib_dependencies: list[str] = []
+```
+
+### Dynamic Components (NoSSRComponent)
+
+Use `rx.NoSSRComponent` for components that rely on browser APIs (`window`, `document`) or are incompatible with Server-Side Rendering (SSR).
+
+**Common Use Cases:**
+- Video/Audio Players
+- Maps (Leaflet, Google Maps)
+- Drawing Canvas / WebGL
+- 3D Graphics (Three.js)
+- QR Scanners
+- Reactflow
+- Rich Text Editors
+
+```python
+class MapContainer(rx.NoSSRComponent):
+    library = "react-leaflet"
+    tag = "MapContainer"
+```
+
+## 3. Handling Props
+
+Map React props to Reflex Vars with appropriate types.
+
+### Simple Props
+
+```python
+class ColorPicker(rx.Component):
+    library = "react-colorful"
+    tag = "HexColorPicker"
+    
+    # Prop definitions
+    color: rx.Var[str]
+    width: rx.Var[int]
+    disabled: rx.Var[bool]
+```
+
+### CamelCase Conversion (`rx.PropsBase`)
+
+React props are typically `camelCase` (e.g., `backgroundColor`), while Python uses `snake_case`. Use `rx.PropsBase` for automatic conversion.
+
+```python
+class StyleProps(rx.PropsBase):
+    background_color: str  # Becomes backgroundColor
+    border_radius: str    # Becomes borderRadius
+
+class StyledBox(rx.Component):
+    style: rx.Var[StyleProps]
+```
+
+### Reserved Prop Names
+
+Reflex reserves some names. Use `_rename_props` to map them back to React props.
+
+```python
+class Page(rx.Component):
+    library = "@react-pdf/renderer"
+    tag = "Page"
+
+    # 'style' is reserved in Reflex components, use 'theme' instead
+    theme: rx.Var[dict]
+    
+    def _rename_props(self):
+        return {"theme": "style"}
+```
+
+## 4. Event Handlers
+
+Map React events/callbacks to Reflex EventHandlers.
+
+### Simple Events
+
+```python
+class ColorPicker(rx.Component):
+    # ...
+    
+    # React: onChange={(color) => ...}
+    # Reflex: on_change passes the color argument
+    on_change: rx.EventHandler[lambda color: [color]]
+```
+
+### Complex Events with EventChain
+
+For events that need multiple handlers or specific handling:
+
+```python
+from reflex.event import EventChain
+
+class MyComponent(rx.Component):
+    # ...
+    def get_event_triggers(self):
+        return {
+            "on_click": lambda: [],
+            "on_mouse_over": lambda e: [e],
+        }
+```
+
+## 5. Custom Code, Hooks, and Imports
+
+Inject custom JavaScript and React hooks.
+
+### Adding Imports
+
+```python
+class MyComponent(rx.Component):
+    def add_imports(self) -> dict:
+        return {
+            # Standard imports
+            "react": ["useState", "useEffect"],
+            # Default import
+            "react-icons/fa": [rx.ImportVar(tag="FaHeart", is_default=True)],
+            # CSS import
+            "leaflet/dist/leaflet.css": [],
+            # Local import
+            "./custom_utils": ["helperFunction"],
+        }
+```
+
+### Custom Hooks
+
+```python
+class MyComponent(rx.Component):
+    def add_hooks(self) -> list[str | rx.Var]:
+        return [
+            "const [count, setCount] = useState(0);",
+            "useEffect(() => { console.log('mounted'); }, []);"
+        ]
+```
+
+### Custom JavaScript Code
+
+```python
+class MyComponent(rx.Component):
+    def add_custom_code(self) -> list[str]:
+        return [
+            "const myGlobalVar = 'value';",
+            "function helper() { return 42; }",
+        ]
+```
+
+## 6. Local Components and Assets
+
+### Using Local Assets
+
+```python
+# Use local image
+rx.image(src=rx.asset("wave.svg"))
+```
+
+### Wrapping Local JSX Files
+
+Wrap `.jsx` or `.tsx` files located in your `assets` folder.
+
+```python
+class Hello(rx.Component):
+    # Load from assets/hello.jsx
+    library = f"$/public{rx.asset('hello.jsx', shared=True)}"
+    tag = "Hello"
+    is_default = True
+```
+
+### Local Packages
+
+Specify path or URL for the library:
+
+```python
+# GitHub
+library = "@masenf/hello-react@github:masenf/hello-react"
+
+# URL
+library = "@masenf/hello-react@https://github.com/.../main.tar.gz"
+
+# Local Directory
+library = "@masenf/hello-react@../hello-react"
+```
+
+## 7. Serializers
+
+For complex Python types that need custom JSON serialization.
+
+```python
+from reflex.utils.serializers import serializer
+
+@serializer
+def serialize_figure(fig: plotly.graph_objects.Figure) -> dict:
+    return fig.to_dict()
+
+class PlotlyChart(rx.Component):
+    figure: rx.Var[plotly.graph_objects.Figure]
+```
+
+## 8. Complete Example: ReactFlow
+
+Wrapping a complex library like ReactFlow requires handling props, events, and styling.
+
+```python
+import reflex as rx
+
+class ReactFlow(rx.NoSSRComponent):
+    library = "reactflow"
+    tag = "ReactFlow"
+    
+    # Props
+    nodes: rx.Var[list[dict]]
+    edges: rx.Var[list[dict]]
+    fit_view: rx.Var[bool]
+    
+    # Events
+    on_nodes_change: rx.EventHandler[lambda changes: [changes]]
+    on_connect: rx.EventHandler[lambda connection: [connection]]
+    
+    # CSS Import
+    def _get_custom_code(self) -> str:
+        return "import 'reactflow/dist/style.css';"
+
+# Sub-components
+class Background(rx.NoSSRComponent):
+    library = "reactflow"
+    tag = "Background"
+
+class Controls(rx.NoSSRComponent):
+    library = "reactflow"
+    tag = "Controls"
+
+# Helper functions for cleaner API
+react_flow = ReactFlow.create
+background = Background.create
+controls = Controls.create
+```
+
+**Usage:**
+
+```python
+def index():
+    return react_flow(
+        background(),
+        controls(),
+        nodes=State.nodes,
+        edges=State.edges,
+        on_connect=State.on_connect,
+        fit_view=True,
+    )
+```
+
+## 9. Quick Reference
+
+| Class | Use Case |
+|-------|----------|
+| `rx.Component` | Standard React components (SSR compatible) |
+| `rx.NoSSRComponent` | Client-side only (window/document access) |
+| `rx.PropsBase` | Custom prop types with auto-camelCase |
+| `rx.EventHandler` | Typed event handlers |
+| `rx.ImportVar` | Fine-grained import control |
+
+## 10. Command Reference
+
+| Command | Purpose |
+|---------|---------|
+| `reflex component init` | Initialize new custom component project |
+| `reflex component build` | Build package for distribution |
+| `reflex component share` | Share on Reflex website |
