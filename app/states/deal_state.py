@@ -211,7 +211,7 @@ class DealState(rx.State):
         if deal:
             form_state = await self.get_state(DealFormState)
             form_state.load_deal_for_edit(deal, mode="edit")
-            return rx.redirect("/add")
+            return rx.redirect(f"/add?mode=edit&ticker={ticker}")
 
     @rx.event
     def load_data(self):

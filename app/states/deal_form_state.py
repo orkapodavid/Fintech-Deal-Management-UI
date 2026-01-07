@@ -123,9 +123,14 @@ class DealFormState(rx.State):
         self.form_mode = FormMode.ADD
 
     @rx.event
-    def conditional_reset_form(self):
-        """Reset form only if not in edit mode (preserves edit state when redirecting)."""
-        if self.form_mode != FormMode.EDIT:
+    def on_page_load(self):
+        """Handle add page load - check query params to determine mode.
+        
+        If mode=edit is in URL, preserve form data for editing.
+        Otherwise, reset form for a fresh add.
+        """
+        mode = self.router.page.params.get("mode", "add")
+        if mode != "edit":
             self.reset_form()
 
     @rx.event

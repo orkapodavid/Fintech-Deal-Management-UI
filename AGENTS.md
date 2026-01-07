@@ -52,3 +52,18 @@
 *   **Refactoring**: Check `IMPROVEMENTS.md` for current technical debt and goals.
 *   **Documentation**: Keep `docs/` updated when changing logic.
 *   **Validation**: When adding fields, update `ValidationService` or `Deal` schema.
+
+## 8. Lessons Learned
+
+### Edit vs Add Mode: Use URL Query Params
+**Problem**: Relying on session state (`form_mode`) to distinguish edit vs add mode fails on page refresh—state persists incorrectly.
+
+**Solution**: Use URL query params (e.g., `/add?mode=edit&ticker=X`) and check `self.router.page.params.get("mode")` in `on_mount` handler. Reset form when `mode != "edit"`.
+
+```python
+@rx.event
+def on_page_load(self):
+    mode = self.router.page.params.get("mode", "add")
+    if mode != "edit":
+        self.reset_form()
+```

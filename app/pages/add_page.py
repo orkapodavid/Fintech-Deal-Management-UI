@@ -117,26 +117,27 @@ def add_page() -> rx.Component:
                         ),
                         class_name="mt-8",
                     ),
-                    class_name="col-span-1",
+                    class_name="col-span-12 lg:col-span-3",
                 ),
+                # Main Form Area - 9 columns on desktop (75% width)
                 rx.el.div(
                     rx.el.div(
                         rx.icon(
-                            "file-pen-line", class_name="w-5 h-5 text-blue-600 mr-2"
+                            "file-pen-line", class_name="w-4 h-4 text-blue-600 mr-2"
                         ),
                         rx.el.h2(
                             "New Deal Details",
-                            class_name="text-lg font-semibold text-gray-900",
+                            class_name="text-base font-semibold text-gray-900",
                         ),
-                        class_name="flex items-center mb-6",
+                        class_name="flex items-center mb-4",
                     ),
                     deal_form_component(),
-                    class_name="col-span-1 lg:col-span-2",
+                    class_name="col-span-12 lg:col-span-9",
                 ),
-                class_name="grid grid-cols-1 lg:grid-cols-3 gap-8",
+                class_name="grid grid-cols-12 gap-4",
             ),
-            class_name="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8",
+            class_name="w-full px-4 py-6",
         ),
         class_name="min-h-screen bg-gray-50",
-        on_mount=DealFormState.conditional_reset_form,
+        on_mount=DealFormState.on_page_load,
     )
