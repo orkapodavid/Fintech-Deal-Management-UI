@@ -123,6 +123,12 @@ class DealFormState(rx.State):
         self.form_mode = FormMode.ADD
 
     @rx.event
+    def conditional_reset_form(self):
+        """Reset form only if not in edit mode (preserves edit state when redirecting)."""
+        if self.form_mode != FormMode.EDIT:
+            self.reset_form()
+
+    @rx.event
     def load_deal_for_edit(self, deal: Deal, mode: str = "edit"):
         self.reset_form()
         processed_values = deal.dict()

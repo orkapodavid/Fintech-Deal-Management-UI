@@ -138,5 +138,5 @@ def add_page() -> rx.Component:
             class_name="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8",
         ),
         class_name="min-h-screen bg-gray-50",
-        on_mount=DealFormState.reset_form,
+        on_mount=DealFormState.conditional_reset_form,
     )

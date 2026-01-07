@@ -2,3 +2,4 @@ PyGithub
 sqlmodel
 faker
 reflex
+reflex==0.8.24.post1
