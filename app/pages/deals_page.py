@@ -154,10 +154,10 @@ def deals_page() -> rx.Component:
                                     rx.el.input(
                                         type="checkbox",
                                         checked=DealState.selected_deal_ids.contains(
-                                            deal.ticker
+                                            deal.id
                                         ),
                                         on_change=lambda _: DealState.toggle_select_deal(
-                                            deal.ticker
+                                            deal.id
                                         ),
                                         class_name="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4",
                                     ),
@@ -167,7 +167,7 @@ def deals_page() -> rx.Component:
                                     rx.el.span(
                                         deal.ticker,
                                         on_click=lambda: DealState.select_deal_for_review(
-                                            deal.ticker
+                                            deal.id
                                         ),
                                         class_name="font-semibold text-blue-600 cursor-pointer hover:underline",
                                     ),

@@ -1,10 +1,11 @@
 import reflex as rx
 from typing import Optional, ClassVar, TypedDict
 from enum import Enum
-from pydantic import field_validator, model_validator, BaseModel
+from pydantic import field_validator, model_validator, BaseModel, Field
 from datetime import datetime
 import re
 import logging
+import uuid
 
 
 class DealStatus(str, Enum):
@@ -14,6 +15,7 @@ class DealStatus(str, Enum):
 
 
 class Deal(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     ticker: str
     structure: str
     concurrent: Optional[str] = None

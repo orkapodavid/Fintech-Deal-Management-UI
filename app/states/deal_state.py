@@ -97,7 +97,7 @@ class DealState(rx.State):
         if not self.paginated_deals:
             return False
         return all(
-            (deal.ticker in self.selected_deal_ids for deal in self.paginated_deals)
+            (deal.id in self.selected_deal_ids for deal in self.paginated_deals)
         )
 
     @rx.event
@@ -112,7 +112,7 @@ class DealState(rx.State):
 
     @rx.event
     def toggle_select_all(self):
-        current_page_ids = [d.ticker for d in self.paginated_deals]
+        current_page_ids = [d.id for d in self.paginated_deals]
         if self.all_selected:
             self.selected_deal_ids = [
                 pid for pid in self.selected_deal_ids if pid not in current_page_ids
@@ -123,11 +123,11 @@ class DealState(rx.State):
                     self.selected_deal_ids.append(pid)
 
     @rx.event
-    def toggle_select_deal(self, deal_ticker: str):
-        if deal_ticker in self.selected_deal_ids:
-            self.selected_deal_ids.remove(deal_ticker)
+    def toggle_select_deal(self, deal_id: str):
+        if deal_id in self.selected_deal_ids:
+            self.selected_deal_ids.remove(deal_id)
         else:
-            self.selected_deal_ids.append(deal_ticker)
+            self.selected_deal_ids.append(deal_id)
 
     show_delete_dialog: bool = False
 
@@ -148,7 +148,7 @@ class DealState(rx.State):
 
     @rx.event
     def delete_selected_deals(self):
-        self.deals = [d for d in self.deals if d.ticker not in self.selected_deal_ids]
+        self.deals = [d for d in self.deals if d.id not in self.selected_deal_ids]
         self.selected_deal_ids = []
         return [rx.toast("Selected deals deleted.", position="bottom-right")]
 
@@ -166,7 +166,7 @@ class DealState(rx.State):
         deals_to_export = []
         if self.selected_deal_ids:
             deals_to_export = [
-                d for d in self.deals if d.ticker in self.selected_deal_ids
+                d for d in self.deals if d.id in self.selected_deal_ids
             ]
         else:
             deals_to_export = self.filtered_deals
@@ -206,12 +206,12 @@ class DealState(rx.State):
     async def edit_selected_deal(self):
         if len(self.selected_deal_ids) != 1:
             return rx.toast("Select exactly one deal to edit.", position="bottom-right")
-        ticker = self.selected_deal_ids[0]
-        deal = next((d for d in self.deals if d.ticker == ticker), None)
+        deal_id = self.selected_deal_ids[0]
+        deal = next((d for d in self.deals if d.id == deal_id), None)
         if deal:
             form_state = await self.get_state(DealFormState)
             form_state.load_deal_for_edit(deal, mode="edit")
-            return rx.redirect(f"/add?mode=edit&ticker={ticker}")
+            return rx.redirect(f"/add?mode=edit&id={deal_id}")
 
     @rx.event
     def load_data(self):
@@ -332,13 +332,27 @@ class DealState(rx.State):
         self.current_page = 1
 
     @rx.event
-    async def select_deal_for_review(self, deal_ticker: str):
-        deal = next((d for d in self.deals if d.ticker == deal_ticker), None)
+    async def select_deal_for_review(self, deal_id: str):
+        deal = next((d for d in self.deals if d.id == deal_id), None)
         if deal:
             self.active_review_deal = deal
             form_state = await self.get_state(DealFormState)
             form_state.load_deal_for_edit(deal, "review")
-            yield rx.toast(f"Viewing deal: {deal_ticker}", position="bottom-right")
+            yield rx.toast(f"Viewing deal: {deal.ticker}", position="bottom-right")
+
+    @rx.event
+    async def on_review_page_load(self):
+        """Handle review page load - check query params to load deal from URL."""
+        deal_id = self.router.page.params.get("id")
+        if deal_id:
+            deal = next((d for d in self.deals if d.id == deal_id), None)
+            if deal:
+                self.active_review_deal = deal
+                form_state = await self.get_state(DealFormState)
+                form_state.load_deal_for_edit(deal, "review")
+        else:
+            # No id in URL, clear active review
+            self.active_review_deal = None
 
     upload_tab: str = "upload"
 
@@ -363,11 +377,11 @@ class DealState(rx.State):
     @rx.event
     async def approve_current_deal(self):
         if self.active_review_deal:
-            deal_ticker = self.active_review_deal.ticker
+            deal_id = self.active_review_deal.id
             form_state = await self.get_state(DealFormState)
             updated_values = form_state.form_values
             for i, d in enumerate(self.deals):
-                if d.ticker == deal_ticker:
+                if d.id == deal_id:
                     for k, v in updated_values.items():
                         if v == "":
                             v = None
@@ -390,8 +404,8 @@ class DealState(rx.State):
     @rx.event
     def reject_current_deal(self):
         if self.active_review_deal:
-            deal_ticker = self.active_review_deal.ticker
-            self.deals = [d for d in self.deals if d.ticker != deal_ticker]
+            deal_id = self.active_review_deal.id
+            self.deals = [d for d in self.deals if d.id != deal_id]
             self.active_review_deal = None
             self.form_data = {}
             return [
@@ -421,9 +435,17 @@ class DealState(rx.State):
             ticker = fake.unique.lexify(text="????").upper()
             processed_data["ticker"] = ticker
         now = datetime.now().isoformat()
-        existing_deal_index = next(
-            (i for i, d in enumerate(self.deals) if d.ticker == ticker), None
-        )
+        # Check if we're editing by id first, then fallback to ticker
+        deal_id = processed_data.get("id")
+        existing_deal_index = None
+        if deal_id:
+            existing_deal_index = next(
+                (i for i, d in enumerate(self.deals) if d.id == deal_id), None
+            )
+        if existing_deal_index is None:
+            existing_deal_index = next(
+                (i for i, d in enumerate(self.deals) if d.ticker == ticker), None
+            )
         if existing_deal_index is not None:
             current_deal = self.deals[existing_deal_index]
             for k, v in processed_data.items():

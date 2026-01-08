@@ -20,6 +20,7 @@ class DealFormState(rx.State):
     is_dirty: bool = False
     is_submitting: bool = False
     touched_fields: list[str] = []
+    form_key: int = 0  # Increment to force form remount
 
     @rx.var
     def has_errors(self) -> bool:
@@ -121,6 +122,7 @@ class DealFormState(rx.State):
         self.is_dirty = False
         self.is_submitting = False
         self.form_mode = FormMode.ADD
+        self.form_key += 1  # Force form remount
 
     @rx.event
     def on_page_load(self):

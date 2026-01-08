@@ -55,10 +55,10 @@
 
 ## 8. Lessons Learned
 
-### Edit vs Add Mode: Use URL Query Params
-**Problem**: Relying on session state (`form_mode`) to distinguish edit vs add mode fails on page refresh—state persists incorrectly.
+### 8.1 Edit vs Add Mode: Use URL Query Params with Deal ID
+**Problem**: Relying on session state (`form_mode`) to distinguish edit vs add mode fails on page refresh—state persists incorrectly. Additionally, using `ticker` as identifier is not reliable since multiple deals can have the same ticker.
 
-**Solution**: Use URL query params (e.g., `/add?mode=edit&ticker=X`) and check `self.router.page.params.get("mode")` in `on_mount` handler. Reset form when `mode != "edit"`.
+**Solution**: Use URL query params with unique deal `id` (e.g., `/add?mode=edit&id=UUID` or `/review?id=UUID`) and check `self.router.page.params.get("id")` in `on_mount` handler. Reset form when not in edit mode.
 
 ```python
 @rx.event
@@ -67,3 +67,38 @@ def on_page_load(self):
     if mode != "edit":
         self.reset_form()
 ```
+
+### 8.2 Use UUIDs for Entity Identification, Not Business Keys
+**Problem**: Using `ticker` as the primary identifier for deals caused issues because:
+1. Multiple deals can have the same ticker (e.g., different deal types for the same company)
+2. URL parameters like `/review?ticker=AAPL` become ambiguous
+3. Selection, deletion, and export operations fail when multiple deals share a ticker
+
+**Solution**: Add a unique `id` field (UUID) to the `Deal` model and use it for all identification:
+
+```python
+# schema.py
+from pydantic import Field
+import uuid
+
+class Deal(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    ticker: str  # Business key, not unique
+    # ...
+```
+
+**Where to use `id` vs `ticker`:**
+| Use Case | Use `id` | Use `ticker` |
+|----------|----------|--------------|
+| URL query params | ✅ | ❌ |
+| Checkbox selection | ✅ | ❌ |
+| Delete operations | ✅ | ❌ |
+| Export filtering | ✅ | ❌ |
+| Display to user | ❌ | ✅ |
+| Search/filter | ❌ | ✅ |
+
+**Key files affected by this pattern:**
+- `app/states/schema.py` - Add `id` field
+- `app/states/deal_state.py` - Update `selected_deal_ids`, lookups, and URL redirects
+- `app/pages/deals_page.py` - Update checkbox binding and click handlers
+- `app/pages/review_page.py` - Update href links

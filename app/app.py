@@ -42,7 +42,7 @@ app.add_page(
     index, route="/deals", on_load=[DealState.load_data, AlertState.generate_alerts]
 )
 app.add_page(add, route="/add")
-app.add_page(review, route="/review", on_load=DealState.load_data)
+app.add_page(review, route="/review", on_load=[DealState.load_data, DealState.on_review_page_load])
 app.add_page(
     index, route="/", on_load=[DealState.load_data, AlertState.generate_alerts]
 )

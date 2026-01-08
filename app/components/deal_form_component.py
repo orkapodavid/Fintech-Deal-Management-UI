@@ -322,4 +322,5 @@ def deal_form_component() -> rx.Component:
         ),
         on_submit=DealState.submit_new_deal,
         reset_on_submit=True,
+        key=DealFormState.form_key,
     )

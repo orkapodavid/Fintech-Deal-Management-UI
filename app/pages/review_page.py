@@ -10,10 +10,10 @@ def queue_row(deal: rx.Var) -> rx.Component:
             class_name="px-6 py-4 whitespace-nowrap",
         ),
         rx.el.td(
-            rx.el.span(
+            rx.el.a(
                 deal.ticker,
+                href=rx.Var.create(f"/review?id={deal.id}"),
                 class_name="font-semibold text-blue-600 hover:underline cursor-pointer",
-                on_click=lambda: DealState.select_deal_for_review(deal.ticker),
             ),
             class_name="px-6 py-4 whitespace-nowrap text-sm text-gray-900",
         ),
@@ -53,9 +53,9 @@ def queue_row(deal: rx.Var) -> rx.Component:
         ),
         rx.el.td(
             rx.el.div(
-                rx.el.button(
+                rx.el.a(
                     "Review",
-                    on_click=lambda: DealState.select_deal_for_review(deal.ticker),
+                    href=rx.Var.create(f"/review?id={deal.id}"),
                     class_name="text-blue-600 hover:text-blue-900 text-sm font-medium",
                 ),
                 class_name="flex space-x-3",
@@ -139,7 +139,7 @@ def review_page() -> rx.Component:
                                             class_name="flex items-center justify-between mb-6 pb-4 border-b border-gray-100",
                                         ),
                                         deal_form_component(),
-                                        class_name="max-w-4xl mx-auto",
+                                        class_name="w-full",
                                     ),
                                     class_name="flex-1 h-full overflow-y-auto p-6 bg-white",
                                 ),
