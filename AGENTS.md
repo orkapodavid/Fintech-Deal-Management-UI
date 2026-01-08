@@ -102,3 +102,40 @@ class Deal(BaseModel):
 - `app/states/deal_state.py` - Update `selected_deal_ids`, lookups, and URL redirects
 - `app/pages/deals_page.py` - Update checkbox binding and click handlers
 - `app/pages/review_page.py` - Update href links
+
+### 8.3 Resetting Forms with `default_value` Inputs in Reflex
+**Problem**: Form inputs using `default_value` only set their value on initial render. When navigating within an SPA (e.g., from `/add?mode=edit&id=...` to `/add`), React doesn't remount the component, so `on_mount` doesn't fire and `default_value` attrs retain stale data even after state is cleared.
+
+**Solution**: Use a `form_key` counter in state that increments on reset, and wrap the form in a keyed container to force React remount:
+
+```python
+# In state
+class DealFormState(rx.State):
+    form_key: int = 0
+    form_values: dict = {}
+    
+    @rx.event
+    def reset_form(self):
+        self.form_values = {}
+        self.form_key += 1  # Force form remount
+
+# In component - wrap form in keyed div
+def deal_form_component() -> rx.Component:
+    return rx.el.div(
+        rx.el.form(
+            # ... form contents with default_value inputs ...
+            on_submit=DealState.submit_deal,
+        ),
+        key=DealFormState.form_key,  # Key on OUTER container
+    )
+```
+
+**For navbar links that should reset forms**: Use button + event sequence instead of anchor tags:
+```python
+rx.el.button(
+    "Add New Deals",
+    on_click=[DealFormState.reset_form, rx.redirect("/add")],
+)
+```
+
+**Key insight**: The `key` prop must be on a container that wraps ALL the inputs you want to reset. When `form_key` changes, React treats it as a new component and remounts everything inside, causing `default_value` to re-initialize.

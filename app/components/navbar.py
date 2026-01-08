@@ -1,5 +1,7 @@
 import reflex as rx
+from app.config import VERSION
 from app.states.deal_state import DealState
+from app.states.deal_form_state import DealFormState
 from app.states.alert_state import AlertState
 
 
@@ -8,6 +10,15 @@ def navbar_link(text: str, url: str) -> rx.Component:
         text,
         href=url,
         class_name="text-sm font-medium text-gray-300 hover:text-white transition-colors px-3 py-2 rounded-md hover:bg-gray-800",
+    )
+
+
+def add_new_deals_link() -> rx.Component:
+    """Special link for 'Add New Deals' that resets the form before navigating."""
+    return rx.el.button(
+        "Add New Deals",
+        on_click=[DealFormState.reset_form, rx.redirect("/add")],
+        class_name="text-sm font-medium text-gray-300 hover:text-white transition-colors px-3 py-2 rounded-md hover:bg-gray-800 cursor-pointer",
     )
 
 
@@ -20,14 +31,14 @@ def navbar() -> rx.Component:
                         "HDP", class_name="text-xl font-bold text-white tracking-tight"
                     ),
                     rx.el.span(
-                        "NYC-04",
+                        f"v{VERSION}",
                         class_name="ml-2 text-xs font-mono text-gray-400 border border-gray-700 rounded px-1.5 py-0.5",
                     ),
                     class_name="flex items-center",
                 ),
                 rx.el.div(
                     navbar_link("Deals", "/deals"),
-                    navbar_link("Add New Deals", "/add"),
+                    add_new_deals_link(),
                     navbar_link("Review AI Input", "/review"),
                     class_name="hidden md:flex items-center space-x-4 ml-10",
                 ),

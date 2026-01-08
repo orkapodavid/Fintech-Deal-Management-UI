@@ -44,6 +44,7 @@ def form_field(
             rx.el.input(
                 type=type_,
                 name=key,
+                key=f"{key}_{DealFormState.form_key}",
                 default_value=DealFormState.form_values[key].to(str),
                 on_change=lambda v: DealFormState.set_field_value(key, v),
                 on_blur=lambda: DealFormState.touch_field(key),
@@ -105,6 +106,7 @@ def compact_form_field(
             rx.el.input(
                 type=type_,
                 name=key,
+                key=f"{key}_{DealFormState.form_key}",
                 default_value=DealFormState.form_values[key].to(str),
                 on_change=lambda v: DealFormState.set_field_value(key, v),
                 on_blur=lambda: DealFormState.touch_field(key),
@@ -151,9 +153,9 @@ def section_header(icon: str, title: str) -> rx.Component:
 def deal_form_component() -> rx.Component:
     """Reusable Deal Form Component with Bento Box layout for power users."""
     is_review = DealFormState.form_mode == "review"
-    return rx.el.form(
-        # 12-Column Bento Box Grid Layout
-        rx.el.div(
+    return rx.el.div(
+        rx.el.form(
+            # 12-Column Bento Box Grid Layout
             # === TOP ROW: Identity (7-col) + Classification (5-col) ===
             rx.el.div(
                 # Identity Card - 7/12 columns on desktop
@@ -184,6 +186,7 @@ def deal_form_component() -> rx.Component:
                             rx.el.input(
                                 type="checkbox",
                                 name="flag_bought",
+                                key=f"flag_bought_{DealFormState.form_key}",
                                 default_checked=DealFormState.form_values["flag_bought"].to(bool),
                                 class_name="rounded text-blue-600 focus:ring-blue-500 mr-1.5 w-3.5 h-3.5",
                             ),
@@ -194,6 +197,7 @@ def deal_form_component() -> rx.Component:
                             rx.el.input(
                                 type="checkbox",
                                 name="flag_clean_up",
+                                key=f"flag_clean_up_{DealFormState.form_key}",
                                 default_checked=DealFormState.form_values["flag_clean_up"].to(bool),
                                 class_name="rounded text-blue-600 focus:ring-blue-500 mr-1.5 w-3.5 h-3.5",
                             ),
@@ -204,6 +208,7 @@ def deal_form_component() -> rx.Component:
                             rx.el.input(
                                 type="checkbox",
                                 name="flag_top_up",
+                                key=f"flag_top_up_{DealFormState.form_key}",
                                 default_checked=DealFormState.form_values["flag_top_up"].to(bool),
                                 class_name="rounded text-blue-600 focus:ring-blue-500 mr-1.5 w-3.5 h-3.5",
                             ),
@@ -219,6 +224,7 @@ def deal_form_component() -> rx.Component:
                         ),
                         rx.el.textarea(
                             name="deal_description",
+                            key=f"deal_description_{DealFormState.form_key}",
                             default_value=DealFormState.form_values["deal_description"].to(str),
                             on_change=lambda v: DealFormState.set_field_value("deal_description", v),
                             placeholder="Brief deal notes...",
@@ -319,8 +325,8 @@ def deal_form_component() -> rx.Component:
                     class_name="flex items-center justify-end bg-white p-3 rounded-lg shadow-sm border border-gray-100",
                 ),
             ),
+            on_submit=DealState.submit_new_deal,
+            reset_on_submit=True,
         ),
-        on_submit=DealState.submit_new_deal,
-        reset_on_submit=True,
         key=DealFormState.form_key,
     )
