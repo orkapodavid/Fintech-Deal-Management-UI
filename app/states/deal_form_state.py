@@ -1,10 +1,9 @@
 import reflex as rx
 import logging
-from typing import Optional, Any
 from enum import Enum
 from datetime import datetime
 from pydantic import ValidationError
-from app.states.schema import Deal, DealStatus
+from app.states.schema import Deal
 
 
 class FormMode(str, Enum):
@@ -127,7 +126,7 @@ class DealFormState(rx.State):
     @rx.event
     def on_page_load(self):
         """Handle add page load - check query params to determine mode.
-        
+
         If mode=edit is in URL, preserve form data for editing.
         Otherwise, reset form for a fresh add.
         """

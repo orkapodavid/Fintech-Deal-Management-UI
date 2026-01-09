@@ -5,7 +5,6 @@ Demonstrates: Data tables, forms, CRUD operations, state management with lists
 """
 
 import reflex as rx
-from datetime import datetime
 
 
 class DataTableState(rx.State):

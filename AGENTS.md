@@ -139,3 +139,10 @@ rx.el.button(
 ```
 
 **Key insight**: The `key` prop must be on a container that wraps ALL the inputs you want to reset. When `form_key` changes, React treats it as a new component and remounts everything inside, causing `default_value` to re-initialize.
+
+## 9. Quality Assurance Tools
+*   **Linting**: use `ruff` to ensure code quality and catch unused imports.
+    *   **Check**: `uv run ruff check .`
+    *   **Fix**: `uv run ruff check . --fix` (Automatically removes unused imports and fixes formatting)
+*   **Rule**: Always run the linter before submitting changes.
+

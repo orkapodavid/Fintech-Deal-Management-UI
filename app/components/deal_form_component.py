@@ -12,7 +12,7 @@ def form_field(
 ) -> rx.Component:
     """Reusable form field with validation and confidence highlighting."""
     error = DealFormState.field_errors[key]
-    has_error = DealFormState.validation_results[key]["is_valid"] == False
+    has_error = not DealFormState.validation_results[key]["is_valid"]
     confidence_score = DealFormState.form_values["ai_confidence_score"].to(int)
     is_low_confidence = (DealFormState.form_mode == "review") & (confidence_score < 60)
     border_class = rx.cond(
@@ -85,7 +85,7 @@ def compact_form_field(
 ) -> rx.Component:
     """Compact form field for dense layouts."""
     error = DealFormState.field_errors[key]
-    has_error = DealFormState.validation_results[key]["is_valid"] == False
+    has_error = not DealFormState.validation_results[key]["is_valid"]
     confidence_score = DealFormState.form_values["ai_confidence_score"].to(int)
     is_low_confidence = (DealFormState.form_mode == "review") & (confidence_score < 60)
     border_class = rx.cond(
@@ -144,7 +144,8 @@ def section_header(icon: str, title: str) -> rx.Component:
     return rx.el.div(
         rx.icon(icon, class_name="w-3.5 h-3.5 text-blue-500 mr-1.5"),
         rx.el.h3(
-            title, class_name="text-xs font-semibold text-gray-900 uppercase tracking-wide"
+            title,
+            class_name="text-xs font-semibold text-gray-900 uppercase tracking-wide",
         ),
         class_name="flex items-center mb-3 pb-1.5 border-b border-gray-100",
     )
@@ -187,7 +188,9 @@ def deal_form_component() -> rx.Component:
                                 type="checkbox",
                                 name="flag_bought",
                                 key=f"flag_bought_{DealFormState.form_key}",
-                                default_checked=DealFormState.form_values["flag_bought"].to(bool),
+                                default_checked=DealFormState.form_values[
+                                    "flag_bought"
+                                ].to(bool),
                                 class_name="rounded text-blue-600 focus:ring-blue-500 mr-1.5 w-3.5 h-3.5",
                             ),
                             "Bought",
@@ -198,7 +201,9 @@ def deal_form_component() -> rx.Component:
                                 type="checkbox",
                                 name="flag_clean_up",
                                 key=f"flag_clean_up_{DealFormState.form_key}",
-                                default_checked=DealFormState.form_values["flag_clean_up"].to(bool),
+                                default_checked=DealFormState.form_values[
+                                    "flag_clean_up"
+                                ].to(bool),
                                 class_name="rounded text-blue-600 focus:ring-blue-500 mr-1.5 w-3.5 h-3.5",
                             ),
                             "Clean Up",
@@ -209,7 +214,9 @@ def deal_form_component() -> rx.Component:
                                 type="checkbox",
                                 name="flag_top_up",
                                 key=f"flag_top_up_{DealFormState.form_key}",
-                                default_checked=DealFormState.form_values["flag_top_up"].to(bool),
+                                default_checked=DealFormState.form_values[
+                                    "flag_top_up"
+                                ].to(bool),
                                 class_name="rounded text-blue-600 focus:ring-blue-500 mr-1.5 w-3.5 h-3.5",
                             ),
                             "Top Up",
@@ -225,8 +232,12 @@ def deal_form_component() -> rx.Component:
                         rx.el.textarea(
                             name="deal_description",
                             key=f"deal_description_{DealFormState.form_key}",
-                            default_value=DealFormState.form_values["deal_description"].to(str),
-                            on_change=lambda v: DealFormState.set_field_value("deal_description", v),
+                            default_value=DealFormState.form_values[
+                                "deal_description"
+                            ].to(str),
+                            on_change=lambda v: DealFormState.set_field_value(
+                                "deal_description", v
+                            ),
                             placeholder="Brief deal notes...",
                             class_name="w-full h-40 rounded border-gray-300 py-1 px-2 text-gray-900 shadow-sm ring-1 ring-inset focus:ring-2 focus:ring-inset focus:ring-blue-500 text-xs resize-none",
                         ),
@@ -242,19 +253,29 @@ def deal_form_component() -> rx.Component:
                     # Row 1: Dates + Primary/Secondary shares
                     compact_form_field("Pricing Date", "pricing_date", type_="date"),
                     compact_form_field("Announce Date", "announce_date", type_="date"),
-                    compact_form_field("Primary Shares", "primary_shares", type_="number"),
-                    compact_form_field("Secondary Shares", "secondary_shares", type_="number"),
+                    compact_form_field(
+                        "Primary Shares", "primary_shares", type_="number"
+                    ),
+                    compact_form_field(
+                        "Secondary Shares", "secondary_shares", type_="number"
+                    ),
                     compact_form_field("Shares (M)", "shares_amount", type_="number"),
-                    compact_form_field("Offer Price ($)", "offering_price", type_="number"),
+                    compact_form_field(
+                        "Offer Price ($)", "offering_price", type_="number"
+                    ),
                     # Row 2: Financial metrics + Warrants
                     compact_form_field("Market Cap (M)", "market_cap", type_="number"),
                     compact_form_field("Offer USD", "offer_price_usd", type_="number"),
                     compact_form_field("Warrants Min", "warrants_min", type_="number"),
-                    compact_form_field("Warrants Strike", "warrants_strike", type_="number"),
+                    compact_form_field(
+                        "Warrants Strike", "warrants_strike", type_="number"
+                    ),
                     compact_form_field("Warrants Exp", "warrants_exp", type_="date"),
                     compact_form_field("Gross Spread", "gross_spread", type_="number"),
                     # Row 3: Remaining fields
-                    compact_form_field("Net Purchase", "net_purchase_price", type_="number"),
+                    compact_form_field(
+                        "Net Purchase", "net_purchase_price", type_="number"
+                    ),
                     compact_form_field("PMI Date", "pmi_date", type_="date"),
                     compact_form_field("Fee %", "fee_percent", type_="number"),
                     class_name="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-3 gap-y-1",
@@ -309,7 +330,9 @@ def deal_form_component() -> rx.Component:
                     rx.el.button(
                         "Save Draft",
                         type="button",
-                        on_click=lambda: DealState.save_draft(DealFormState.form_values),
+                        on_click=lambda: DealState.save_draft(
+                            DealFormState.form_values
+                        ),
                         class_name="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors text-sm mr-2",
                     ),
                     rx.el.button(

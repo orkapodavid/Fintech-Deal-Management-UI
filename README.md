@@ -12,7 +12,11 @@ pip install -r requirements.txt
 reflex init
 
 # Run the app
+# Run the app
 reflex run
+
+# Linting
+uv run ruff check .
 ```
 
 The app will be available at `http://localhost:3000`.

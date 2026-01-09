@@ -1,13 +1,11 @@
 import reflex as rx
-from typing import Optional, Any
-from faker import Faker
-import random
+from typing import Optional
 from datetime import datetime
 from app.states.schema import Deal, DealStatus
 from app.states.deal_form_state import DealFormState
-from app.states.alert_state import AlertState
+from app.services.deal_service import DealService
 
-fake = Faker()
+deal_service = DealService()
 
 
 class DealState(rx.State):
@@ -96,9 +94,7 @@ class DealState(rx.State):
     def all_selected(self) -> bool:
         if not self.paginated_deals:
             return False
-        return all(
-            (deal.id in self.selected_deal_ids for deal in self.paginated_deals)
-        )
+        return all((deal.id in self.selected_deal_ids for deal in self.paginated_deals))
 
     @rx.event
     def next_page(self):
@@ -148,7 +144,12 @@ class DealState(rx.State):
 
     @rx.event
     def delete_selected_deals(self):
-        self.deals = [d for d in self.deals if d.id not in self.selected_deal_ids]
+        # Call service to delete deals
+        for deal_id in self.selected_deal_ids:
+            deal_service.delete_deal(deal_id)
+
+        # Refresh local state
+        self.deals = deal_service.get_deals()
         self.selected_deal_ids = []
         return [rx.toast("Selected deals deleted.", position="bottom-right")]
 
@@ -165,9 +166,7 @@ class DealState(rx.State):
         )
         deals_to_export = []
         if self.selected_deal_ids:
-            deals_to_export = [
-                d for d in self.deals if d.id in self.selected_deal_ids
-            ]
+            deals_to_export = [d for d in self.deals if d.id in self.selected_deal_ids]
         else:
             deals_to_export = self.filtered_deals
         if not deals_to_export:
@@ -215,83 +214,7 @@ class DealState(rx.State):
 
     @rx.event
     def load_data(self):
-        if not self.deals:
-            self._generate_fake_data()
-
-    def _generate_fake_data(self):
-        structures = ["IPO", "M&A", "Spin-off", "Follow-on", "Convertible"]
-        sectors = ["Technology", "Healthcare", "Finance", "Energy", "Consumer"]
-        countries = ["USA", "UK", "Germany", "Canada", "Singapore"]
-        statuses = [s.value for s in DealStatus]
-        new_deals = []
-        for _ in range(50):
-            status = random.choice(statuses)
-            ticker = fake.unique.lexify(text="????").upper()
-            now = datetime.now().isoformat()
-            warrants_min = random.randint(0, 5)
-            if warrants_min > 0:
-                warrants_strike = round(random.uniform(10.0, 100.0), 2)
-                warrants_exp = fake.date_this_year().isoformat()
-            else:
-                warrants_strike = None
-                warrants_exp = None
-            announce_dt = fake.date_this_year()
-            pricing_dt = fake.date_between(start_date=announce_dt, end_date="+30d")
-            deal = Deal(
-                ticker=ticker,
-                structure=random.choice(structures),
-                company_name=fake.company(),
-                pricing_date=pricing_dt.isoformat(),
-                announce_date=announce_dt.isoformat(),
-                pmi_date=fake.date_this_year().isoformat(),
-                shares_amount=round(random.uniform(1.0, 50.0), 2),
-                offering_price=round(random.uniform(10.0, 500.0), 2),
-                market_cap=round(random.uniform(100.0, 10000.0), 2),
-                avg_volume=round(random.uniform(100000, 5000000), 2),
-                gross_spread=round(random.uniform(1.0, 7.0), 2),
-                net_purchase_price=round(random.uniform(90.0, 480.0), 2),
-                status=status,
-                ai_confidence_score=random.randint(30, 99),
-                flag_bought=random.choice([True, False]),
-                flag_clean_up=random.choice([True, False]),
-                flag_top_up=random.choice([True, False]),
-                sector=random.choice(sectors),
-                country=random.choice(countries),
-                source_file=f"{ticker}_term_sheet.pdf",
-                deal_description=fake.paragraph(nb_sentences=3),
-                reg_id=f"333-{random.randint(100000, 999999)}",
-                warrants_min=warrants_min,
-                warrants_strike=warrants_strike,
-                warrants_exp=warrants_exp,
-                created_at=now,
-                updated_at=now,
-                concurrent=None,
-                id_bb_global=None,
-                id_sedol1=None,
-                action_id=None,
-                first_trade_date=None,
-                inst_own_date=None,
-                price_on_pricing_date=None,
-                vol_on_pricing_date=None,
-                offer_price_usd=None,
-                fx_rate=None,
-                fee_percent=None,
-                reported_shares=None,
-                bbg_shares=None,
-                primary_shares=None,
-                secondary_shares=None,
-                eqy_sh_out=None,
-                eqy_float=None,
-                inst_own_pct=None,
-                bics_level=None,
-                avg_daily_val=None,
-                vix=None,
-                vol_90_day=None,
-                short_int=None,
-                cdr_exch_code=None,
-            )
-            new_deals.append(deal)
-        self.deals = new_deals
+        self.deals = deal_service.get_deals()
 
     @rx.event
     def set_search_query(self, query: str):
@@ -380,17 +303,22 @@ class DealState(rx.State):
             deal_id = self.active_review_deal.id
             form_state = await self.get_state(DealFormState)
             updated_values = form_state.form_values
-            for i, d in enumerate(self.deals):
-                if d.id == deal_id:
-                    for k, v in updated_values.items():
-                        if v == "":
-                            v = None
-                        if hasattr(d, k):
-                            setattr(d, k, v)
-                    d.status = DealStatus.ACTIVE
-                    d.updated_at = datetime.now().isoformat()
-                    self.deals[i] = d
-                    break
+
+            # Find and update deal
+            deal = deal_service.get_deal_by_id(deal_id)
+            if deal:
+                for k, v in updated_values.items():
+                    if v == "":
+                        v = None
+                    if hasattr(deal, k):
+                        setattr(deal, k, v)
+                deal.status = DealStatus.ACTIVE
+                deal.updated_at = datetime.now().isoformat()
+                deal_service.save_deal(deal)
+
+                # Refresh local state
+                self.deals = deal_service.get_deals()
+
             self.active_review_deal = None
             form_state.reset_form()
             return [
@@ -405,7 +333,8 @@ class DealState(rx.State):
     def reject_current_deal(self):
         if self.active_review_deal:
             deal_id = self.active_review_deal.id
-            self.deals = [d for d in self.deals if d.id != deal_id]
+            deal_service.delete_deal(deal_id)
+            self.deals = deal_service.get_deals()
             self.active_review_deal = None
             self.form_data = {}
             return [
@@ -432,38 +361,50 @@ class DealState(rx.State):
                 processed_data[field] = None
         ticker = processed_data.get("ticker")
         if not ticker:
-            ticker = fake.unique.lexify(text="????").upper()
+            # We don't have access to fake here anymore, but user should provide ticker or we generate a placeholder
+            # ideally the form validation handles this.
+            # providing a fallback just in case
+            import random
+            import string
+
+            ticker = "".join(random.choices(string.ascii_uppercase, k=4))
             processed_data["ticker"] = ticker
+
         now = datetime.now().isoformat()
+
         # Check if we're editing by id first, then fallback to ticker
         deal_id = processed_data.get("id")
-        existing_deal_index = None
+        current_deal = None
+
         if deal_id:
-            existing_deal_index = next(
-                (i for i, d in enumerate(self.deals) if d.id == deal_id), None
-            )
-        if existing_deal_index is None:
-            existing_deal_index = next(
-                (i for i, d in enumerate(self.deals) if d.ticker == ticker), None
-            )
-        if existing_deal_index is not None:
-            current_deal = self.deals[existing_deal_index]
+            current_deal = deal_service.get_deal_by_id(deal_id)
+
+        if current_deal is None:
+            current_deal = deal_service.get_deal_by_ticker(ticker)
+
+        if current_deal:
             for k, v in processed_data.items():
                 if hasattr(current_deal, k):
                     setattr(current_deal, k, v)
             current_deal.status = status
             current_deal.updated_at = now
-            self.deals[existing_deal_index] = current_deal
+            deal_service.save_deal(current_deal)
         else:
             processed_data["status"] = status
             processed_data["created_at"] = now
             processed_data["updated_at"] = now
             if "ai_confidence_score" not in processed_data:
                 processed_data["ai_confidence_score"] = (
-                    100 if status == DealStatus.DRAFT else random.randint(80, 100)
+                    100
+                    if status == DealStatus.DRAFT
+                    else 85  # Default high confidence for manually entered deals
                 )
             new_deal = Deal(**processed_data)
-            self.deals.append(new_deal)
+            deal_service.save_deal(new_deal)
+
+        # Refresh local list
+        self.deals = deal_service.get_deals()
+
         return rx.noop()
 
     @rx.event

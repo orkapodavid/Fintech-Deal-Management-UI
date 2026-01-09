@@ -7,4 +7,5 @@ dependencies = [
     "faker>=40.1.0",
     "reflex>=0.8.24.post1",
     "sqlmodel>=0.0.31",
+    "ruff>=0.9.1",
 ]
