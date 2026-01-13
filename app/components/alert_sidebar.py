@@ -1,5 +1,5 @@
 import reflex as rx
-from app.states.alert_state import AlertState
+from app.states.alerts.alert_state import AlertState
 from app.states.schema import Alert
 
 

@@ -1,5 +1,5 @@
 import reflex as rx
-from app.states.deal_state import DealState
+from app.states.deals.deals_state import DealState
 from app.components.alert_sidebar import alert_sidebar
 from app.components.confirmation_dialog import confirmation_dialog
 
@@ -42,7 +42,7 @@ def badge(text: str, color_scheme: str = "gray") -> rx.Component:
     )
 
 
-def deals_page() -> rx.Component:
+def deals_list_page() -> rx.Component:
     return rx.el.div(
         rx.el.div(
             rx.el.div(
@@ -166,6 +166,11 @@ def deals_page() -> rx.Component:
                                 rx.el.td(
                                     rx.el.span(
                                         deal.ticker,
+                                        # Use rx.link here for pure navigation, or keep span with handler if we want execute code + nav
+                                        # The mixin `select_deal_for_review` does a redirect.
+                                        # But let's verify if clicking here is meant to go to review.
+                                        # Original code: select_deal_for_review -> toast + form load.
+                                        # Let's keep it as is, or switch to link. The mixin method redirects now.
                                         on_click=lambda: DealState.select_deal_for_review(
                                             deal.id
                                         ),

@@ -1,5 +1,5 @@
 import reflex as rx
-from app.states.deal_state import DealState
+from app.states.deals.deals_state import DealState
 from app.components.deal_form_component import deal_form_component
 
 
@@ -12,7 +12,8 @@ def queue_row(deal: rx.Var) -> rx.Component:
         rx.el.td(
             rx.el.a(
                 deal.ticker,
-                href=rx.Var.create(f"/review?id={deal.id}"),
+                # Use href for client-side routing
+                href=rx.Var.create(f"/deals/review?id={deal.id}"),
                 class_name="font-semibold text-blue-600 hover:underline cursor-pointer",
             ),
             class_name="px-6 py-4 whitespace-nowrap text-sm text-gray-900",
@@ -55,7 +56,7 @@ def queue_row(deal: rx.Var) -> rx.Component:
             rx.el.div(
                 rx.el.a(
                     "Review",
-                    href=rx.Var.create(f"/review?id={deal.id}"),
+                    href=rx.Var.create(f"/deals/review?id={deal.id}"),
                     class_name="text-blue-600 hover:text-blue-900 text-sm font-medium",
                 ),
                 class_name="flex space-x-3",
@@ -66,7 +67,7 @@ def queue_row(deal: rx.Var) -> rx.Component:
     )
 
 
-def review_page() -> rx.Component:
+def deals_review_page() -> rx.Component:
     return rx.el.div(
         rx.el.div(
             rx.cond(

@@ -1,10 +1,10 @@
 import reflex as rx
 from app.components.navbar import navbar
-from app.pages.deals_page import deals_page
-from app.pages.add_page import add_page
-from app.pages.review_page import review_page
-from app.states.deal_state import DealState
-from app.states.alert_state import AlertState
+from app.pages.deals.list_page import deals_list_page
+from app.pages.deals.add_page import deals_add_page
+from app.pages.deals.review_page import deals_review_page
+from app.states.deals.deals_state import DealState
+from app.states.alerts.alert_state import AlertState
 
 
 def layout(content: rx.Component) -> rx.Component:
@@ -15,16 +15,20 @@ def layout(content: rx.Component) -> rx.Component:
     )
 
 
+def deals_page_wrapper() -> rx.Component:
+    return layout(deals_list_page())
+
+
+def add_page_wrapper() -> rx.Component:
+    return layout(deals_add_page())
+
+
+def review_page_wrapper() -> rx.Component:
+    return layout(deals_review_page())
+
+
 def index() -> rx.Component:
-    return layout(deals_page())
-
-
-def add() -> rx.Component:
-    return layout(add_page())
-
-
-def review() -> rx.Component:
-    return layout(review_page())
+    return rx.box(on_mount=rx.redirect("/deals"))
 
 
 app = rx.App(
@@ -38,11 +42,25 @@ app = rx.App(
         ),
     ],
 )
+
+app.add_page(index, route="/")
+
 app.add_page(
-    index, route="/deals", on_load=[DealState.load_data, AlertState.generate_alerts]
+    deals_page_wrapper,
+    route="/deals",
+    on_load=[DealState.load_data, AlertState.generate_alerts],
+    title="Deals | HDP",
 )
-app.add_page(add, route="/add")
-app.add_page(review, route="/review", on_load=[DealState.load_data, DealState.on_review_page_load])
+
 app.add_page(
-    index, route="/", on_load=[DealState.load_data, AlertState.generate_alerts]
+    add_page_wrapper,
+    route="/deals/add",
+    title="Add Deal | HDP",
+)
+
+app.add_page(
+    review_page_wrapper,
+    route="/deals/review",
+    on_load=[DealState.load_data, DealState.on_review_page_load],
+    title="Review Deals | HDP",
 )
