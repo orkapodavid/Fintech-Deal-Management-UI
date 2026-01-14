@@ -1,18 +1,10 @@
 import reflex as rx
-from app.components.navbar import navbar
+from app.components.shared import layout
 from app.pages.deals.list_page import deals_list_page
 from app.pages.deals.add_page import deals_add_page
 from app.pages.deals.review_page import deals_review_page
 from app.states.deals.deals_state import DealState
 from app.states.alerts.alert_state import AlertState
-
-
-def layout(content: rx.Component) -> rx.Component:
-    return rx.el.div(
-        navbar(),
-        content,
-        class_name="font-['Inter'] min-h-screen bg-gray-50 text-gray-900",
-    )
 
 
 def deals_page_wrapper() -> rx.Component:

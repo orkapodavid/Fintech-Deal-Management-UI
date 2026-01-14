@@ -15,15 +15,10 @@ class DealState(
     @rx.event
     def show_settings(self):
         """Displays a settings toast placeholder."""
-        return rx.toast(
+        return rx.toast.info(
             "Settings panel is under construction.",
             position="bottom-right",
             duration=3000,
-            style={
-                "background-color": "#F3F4F6",
-                "color": "#374151",
-                "border": "1px solid #E5E7EB",
-            },
         )
 
     @rx.event
@@ -36,13 +31,8 @@ class DealState(
     @rx.event
     def logout(self):
         """Simulates user logout."""
-        return rx.toast(
+        return rx.toast.warning(
             "Logging out...",
             position="bottom-right",
             duration=2000,
-            style={
-                "background-color": "#FEF2F2",
-                "color": "#991B1B",
-                "border": "1px solid #FECACA",
-            },
         )

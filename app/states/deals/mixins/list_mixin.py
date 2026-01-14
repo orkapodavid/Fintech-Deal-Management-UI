@@ -233,13 +233,8 @@ class DealListMixin(rx.State, mixin=True):
     def refresh_data(self):
         """Reloads data from the backend."""
         self.load_data()
-        return rx.toast(
+        return rx.toast.info(
             "Data refreshed successfully.",
             position="bottom-right",
             duration=2000,
-            style={
-                "background-color": "#EFF6FF",
-                "color": "#1E40AF",
-                "border": "1px solid #BFDBFE",
-            },
         )

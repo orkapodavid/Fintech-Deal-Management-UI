@@ -1,6 +1,6 @@
 import reflex as rx
 from app.states.deals.deals_state import DealState
-from app.components.alert_sidebar import alert_sidebar
+from app.components.shared import alert_sidebar
 from app.components.confirmation_dialog import confirmation_dialog
 
 
