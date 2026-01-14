@@ -1,6 +1,6 @@
 import reflex as rx
 from app.states.deal_form_state import DealFormState
-from app.states.deal_state import DealState
+from app.states.deals.deals_state import DealState
 
 
 def form_field(
@@ -12,7 +12,7 @@ def form_field(
 ) -> rx.Component:
     """Reusable form field with validation and confidence highlighting."""
     error = DealFormState.field_errors[key]
-    has_error = not DealFormState.validation_results[key]["is_valid"]
+    has_error = ~DealFormState.validation_results[key]["is_valid"]
     confidence_score = DealFormState.form_values["ai_confidence_score"].to(int)
     is_low_confidence = (DealFormState.form_mode == "review") & (confidence_score < 60)
     border_class = rx.cond(
@@ -85,7 +85,7 @@ def compact_form_field(
 ) -> rx.Component:
     """Compact form field for dense layouts."""
     error = DealFormState.field_errors[key]
-    has_error = not DealFormState.validation_results[key]["is_valid"]
+    has_error = ~DealFormState.validation_results[key]["is_valid"]
     confidence_score = DealFormState.form_values["ai_confidence_score"].to(int)
     is_low_confidence = (DealFormState.form_mode == "review") & (confidence_score < 60)
     border_class = rx.cond(

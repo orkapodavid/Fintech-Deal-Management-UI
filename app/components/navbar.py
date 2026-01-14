@@ -29,7 +29,8 @@ def navbar() -> rx.Component:
                 rx.el.div(
                     rx.el.div(
                         rx.el.span(
-                            "HDP", class_name="text-xl font-bold text-white tracking-tight"
+                            "HDP",
+                            class_name="text-xl font-bold text-white tracking-tight",
                         ),
                         rx.el.span(
                             f"v{VERSION}",
@@ -111,4 +112,5 @@ def navbar() -> rx.Component:
                 class_name="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between",
             ),
             class_name="bg-[#0f1115] border-b border-gray-800 sticky top-0 z-50",
-        )
+        ),
+    )
