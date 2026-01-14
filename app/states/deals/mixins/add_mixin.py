@@ -1,5 +1,4 @@
 import reflex as rx
-from typing import Optional
 from datetime import datetime
 from app.states.schema import Deal, DealStatus
 from app.states.deal_form_state import DealFormState

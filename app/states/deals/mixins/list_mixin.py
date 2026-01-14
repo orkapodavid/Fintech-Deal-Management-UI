@@ -1,7 +1,5 @@
 import reflex as rx
-from typing import Optional
-from app.states.schema import Deal, DealStatus
-from app.states.deal_form_state import DealFormState
+from app.states.schema import Deal
 from app.services.deal_service import DealService
 
 deal_service = DealService()

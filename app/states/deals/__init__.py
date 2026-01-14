@@ -1,1 +1,1 @@
-from .deals_state import DealState
+from .deals_state import DealState as DealState
