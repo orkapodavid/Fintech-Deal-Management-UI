@@ -3,6 +3,20 @@ from app.states.alerts.alert_state import AlertState
 from app.states.schema import Alert
 
 
+def format_timestamp_display(timestamp: rx.Var) -> rx.Var:
+    """Extract and format time from ISO timestamp for display.
+
+    Takes ISO string like '2026-01-14T23:10:25.123456' and returns 'HH:MM'
+    ISO format positions: 0123456789...  ->  2026-01-14T23:10:25
+    Position 11 is 'T', so time starts at position 12.
+    """
+    # Extract time portion: HH:MM (positions 11-16, but 11 is 'T', so use 11:17 to get T23:10 then slice off T)
+    # Actually: position 11='T', 12-13='23', 14=':', 15-16='10'
+    # So for HH:MM we want [11:16] but that gives 'T23:1', we need [11:17] for 'T23:10' minus T
+    # Simplest: take positions 11:16 which is 5 chars starting at T -> use slice adjustment
+    return timestamp.to_string().split("T")[1][:5]
+
+
 def alert_item(alert: Alert) -> rx.Component:
     border_color = rx.match(
         alert.severity,
@@ -26,7 +40,8 @@ def alert_item(alert: Alert) -> rx.Component:
                     class_name=f"text-[10px] font-bold px-1.5 py-0.5 rounded {badge_color}",
                 ),
                 rx.el.span(
-                    alert.timestamp.to_string(), class_name="text-xs text-gray-400"
+                    format_timestamp_display(alert.timestamp),
+                    class_name="text-xs text-gray-400",
                 ),
                 rx.el.button(
                     rx.icon("x", size=14),

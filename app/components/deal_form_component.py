@@ -12,7 +12,10 @@ def form_field(
 ) -> rx.Component:
     """Reusable form field with validation and confidence highlighting."""
     error = DealFormState.field_errors[key]
-    has_error = ~DealFormState.validation_results[key]["is_valid"]
+    # Only show error if field has been touched
+    is_touched = DealFormState.touched_fields.contains(key)
+    raw_has_error = ~DealFormState.validation_results[key]["is_valid"]
+    has_error = is_touched & raw_has_error
     confidence_score = DealFormState.form_values["ai_confidence_score"].to(int)
     is_low_confidence = (DealFormState.form_mode == "review") & (confidence_score < 60)
     border_class = rx.cond(
@@ -85,7 +88,10 @@ def compact_form_field(
 ) -> rx.Component:
     """Compact form field for dense layouts."""
     error = DealFormState.field_errors[key]
-    has_error = ~DealFormState.validation_results[key]["is_valid"]
+    # Only show error if field has been touched
+    is_touched = DealFormState.touched_fields.contains(key)
+    raw_has_error = ~DealFormState.validation_results[key]["is_valid"]
+    has_error = is_touched & raw_has_error
     confidence_score = DealFormState.form_values["ai_confidence_score"].to(int)
     is_low_confidence = (DealFormState.form_mode == "review") & (confidence_score < 60)
     border_class = rx.cond(

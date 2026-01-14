@@ -3,6 +3,23 @@ from app.states.deals.deals_state import DealState
 from app.components.deal_form_component import deal_form_component
 
 
+def format_ingest_time(timestamp: rx.Var) -> rx.Var:
+    """Format ISO timestamp for the review queue.
+
+    Takes ISO string like '2026-01-14T23:10:25.123456' and returns 'MM-DD HH:MM'
+    ISO positions: 0123456789012345
+                   2026-01-14T23:10:25
+    Position 5-10: '01-14' (MM-DD, but includes the dash before as well)
+    Position 11-16: 'T23:1' (includes T, missing last digit)
+
+    Correct: 5-10 for MM-DD, 11-16 for T + HH:M, we need to adjust
+    Actually: Let's just show full date-time but replace T with space
+    """
+    # Replace 'T' with ' ' and take chars to get MM-DD HH:MM
+    # Adjusted from [5:16] to [6:17] to compensate for Reflex string indexing
+    return timestamp.to_string().replace("T", " ")[6:17]
+
+
 def queue_row(deal: rx.Var) -> rx.Component:
     return rx.el.tr(
         rx.el.td(
@@ -19,7 +36,7 @@ def queue_row(deal: rx.Var) -> rx.Component:
             class_name="px-6 py-4 whitespace-nowrap text-sm text-gray-900",
         ),
         rx.el.td(
-            deal.created_at.to_string(),
+            format_ingest_time(deal.created_at),
             class_name="px-6 py-4 whitespace-nowrap text-sm text-gray-500",
         ),
         rx.el.td(
