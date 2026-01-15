@@ -104,16 +104,21 @@ class DealListMixin(rx.State, mixin=True):
                 pid for pid in self.selected_deal_ids if pid not in current_page_ids
             ]
         else:
+            # Must reassign to trigger reactivity (not in-place append)
+            new_ids = list(self.selected_deal_ids)
             for pid in current_page_ids:
-                if pid not in self.selected_deal_ids:
-                    self.selected_deal_ids.append(pid)
+                if pid not in new_ids:
+                    new_ids.append(pid)
+            self.selected_deal_ids = new_ids
 
     @rx.event
     def toggle_select_deal(self, deal_id: str):
         if deal_id in self.selected_deal_ids:
-            self.selected_deal_ids.remove(deal_id)
+            # Must reassign to trigger reactivity
+            self.selected_deal_ids = [d for d in self.selected_deal_ids if d != deal_id]
         else:
-            self.selected_deal_ids.append(deal_id)
+            # Must reassign to trigger reactivity
+            self.selected_deal_ids = self.selected_deal_ids + [deal_id]
 
     @rx.event
     def request_delete(self):
