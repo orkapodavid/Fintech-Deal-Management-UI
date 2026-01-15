@@ -53,9 +53,50 @@
 *   **Documentation**: Keep `docs/` updated when changing logic.
 *   **Validation**: When adding fields, update `ValidationService` or `Deal` schema.
 
-## 8. Lessons Learned
+## 8. Code Generation Prompts
 
-### 8.1 Edit vs Add Mode: Use URL Query Params with Deal ID
+Prompts for generating new code following the project's established patterns. Located in `docs/prompts/`.
+
+### 8.1 Creating a New Module Page
+**Prompt**: `docs/prompts/create_new_page.md`
+
+Use this prompt when creating a completely new module with its own:
+- State management (`app/states/{module}/`)
+- Service layer (`app/services/{module}_service.py`)
+- Page components (`app/pages/{module}/`)
+- Optional: Module-specific components (`app/components/{module}/`)
+
+The prompt includes user clarification questions to gather requirements before implementation.
+
+**Files created**:
+- `app/states/{module}/types.py` - TypedDict definitions
+- `app/states/{module}/{module}_state.py` - Main state with mixin composition
+- `app/states/{module}/mixins/*.py` - Feature-specific state logic
+- `app/services/{module}_service.py` - Business logic and data operations
+- `app/pages/{module}/{module}_page.py` - Hub page with tab routing
+- `app/pages/{module}/*.py` - Individual tab view components
+
+### 8.2 Creating a New Tab for an Existing Module
+**Prompt**: `docs/prompts/create_new_tab.md`
+
+Use this prompt when adding a new tab/sub-page to an existing module (like adding "Analytics" to Deals).
+
+**Files created/modified**:
+- `app/pages/{module}/{tab}_page.py` - New tab view component
+- `app/states/{module}/mixins/{tab}_mixin.py` - Tab-specific state (if needed)
+- `app/pages/{module}/{module}_page.py` - Updated with new tab definition
+- `app/states/{module}/{module}_state.py` - Updated to include new mixin
+- `app/app.py` - New route registration
+
+### 8.3 Reference Style Guides
+For architecture patterns and best practices, see:
+- `docs/style_guides/reflex-architecture-guide.md` - Complete architecture reference
+- `docs/style_guides/reflex-module-layout-tabs-prompt.md` - Tab layout patterns
+- `docs/style_guides/reflex-style-migration-prompts.md` - Migration templates
+
+## 9. Lessons Learned
+
+### 9.1 Edit vs Add Mode: Use URL Query Params with Deal ID
 **Problem**: Relying on session state (`form_mode`) to distinguish edit vs add mode fails on page refresh—state persists incorrectly. Additionally, using `ticker` as identifier is not reliable since multiple deals can have the same ticker.
 
 **Solution**: Use URL query params with unique deal `id` (e.g., `/add?mode=edit&id=UUID` or `/review?id=UUID`) and check `self.router.page.params.get("id")` in `on_mount` handler. Reset form when not in edit mode.
@@ -68,7 +109,7 @@ def on_page_load(self):
         self.reset_form()
 ```
 
-### 8.2 Use UUIDs for Entity Identification, Not Business Keys
+### 9.2 Use UUIDs for Entity Identification, Not Business Keys
 **Problem**: Using `ticker` as the primary identifier for deals caused issues because:
 1. Multiple deals can have the same ticker (e.g., different deal types for the same company)
 2. URL parameters like `/review?ticker=AAPL` become ambiguous
@@ -103,7 +144,7 @@ class Deal(BaseModel):
 - `app/pages/deals_page.py` - Update checkbox binding and click handlers
 - `app/pages/review_page.py` - Update href links
 
-### 8.3 Resetting Forms with `default_value` Inputs in Reflex
+### 9.3 Resetting Forms with `default_value` Inputs in Reflex
 **Problem**: Form inputs using `default_value` only set their value on initial render. When navigating within an SPA (e.g., from `/add?mode=edit&id=...` to `/add`), React doesn't remount the component, so `on_mount` doesn't fire and `default_value` attrs retain stale data even after state is cleared.
 
 **Solution**: Use a `form_key` counter in state that increments on reset, and wrap the form in a keyed container to force React remount:
@@ -140,7 +181,7 @@ rx.el.button(
 
 **Key insight**: The `key` prop must be on a container that wraps ALL the inputs you want to reset. When `form_key` changes, React treats it as a new component and remounts everything inside, causing `default_value` to re-initialize.
 
-## 9. Quality Assurance Tools
+## 10. Quality Assurance Tools
 *   **Linting**: use `ruff` to ensure code quality and catch unused imports.
     *   **Check**: `uv run ruff check .`
     *   **Fix**: `uv run ruff check . --fix` (Automatically removes unused imports and fixes formatting)
