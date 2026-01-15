@@ -84,7 +84,8 @@ def queue_row(deal: rx.Var) -> rx.Component:
     )
 
 
-def deals_review_page() -> rx.Component:
+def deals_review_view() -> rx.Component:
+    """Review deals view content (used inside module layout)."""
     return rx.el.div(
         rx.el.div(
             rx.cond(

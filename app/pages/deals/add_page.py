@@ -41,7 +41,8 @@ def recent_upload_item(
     )
 
 
-def deals_add_page() -> rx.Component:
+def deals_add_view() -> rx.Component:
+    """Add deals view content (used inside module layout)."""
     return rx.el.div(
         rx.el.div(
             rx.el.div(

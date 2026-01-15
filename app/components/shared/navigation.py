@@ -1,123 +1,196 @@
-"""Navigation component for the application."""
+"""Navigation component for the application (Region 1).
+
+Implements the shared top navigation bar matching the architecture guide
+Section 3.4 "Region 1: Navigation Component".
+"""
 
 import reflex as rx
-from app.config import VERSION
+from app.states.ui.ui_state import UIState
+from app.states.alerts.alert_state import AlertState
 from app.states.deals.deals_state import DealState
 from app.states.deal_form_state import DealFormState
-from app.states.alerts.alert_state import AlertState
-from app.states.ui.ui_state import UIState
+from app.config import VERSION
 
 
-def navbar_link(text: str, url: str) -> rx.Component:
-    """Create a navigation link."""
+def nav_item(name: str, icon: str, route: str, module_id: str) -> rx.Component:
+    """Single navigation item with active state styling.
+
+    Args:
+        name: Display name for the nav item
+        icon: Lucide icon name
+        route: URL route to navigate to
+        module_id: Module identifier for active state matching
+
+    Returns:
+        Navigation item component with active/inactive styling
+    """
+    is_active = UIState.active_module == module_id
+
     return rx.el.a(
-        text,
-        href=url,
-        class_name="text-sm font-medium text-gray-300 hover:text-white transition-colors px-3 py-2 rounded-md hover:bg-gray-800",
+        rx.icon(
+            icon,
+            size=16,
+            class_name=rx.cond(
+                is_active,
+                "text-white",
+                "text-gray-400 group-hover:text-gray-200",
+            ),
+        ),
+        rx.el.span(
+            name,
+            class_name=rx.cond(
+                is_active,
+                "text-sm ml-2 hidden md:inline text-white font-medium",
+                "text-sm ml-2 hidden md:inline text-gray-300 group-hover:text-white",
+            ),
+        ),
+        href=route,
+        on_click=lambda: UIState.set_module(module_id),
+        class_name=rx.cond(
+            is_active,
+            "group flex items-center px-4 py-2 bg-gray-700 rounded-lg cursor-pointer",
+            "group flex items-center px-4 py-2 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer",
+        ),
     )
 
 
-def add_new_deals_link() -> rx.Component:
-    """Special link for 'Add New Deals' that resets the form before navigating."""
+def add_deals_nav_item() -> rx.Component:
+    """Special nav item for 'Add New' that resets the form before navigating."""
+    is_active = UIState.active_module == "add"
+
     return rx.el.button(
-        "Add New Deals",
-        on_click=[DealFormState.reset_form, rx.redirect("/deals/add")],
-        class_name="text-sm font-medium text-gray-300 hover:text-white transition-colors px-3 py-2 rounded-md hover:bg-gray-800 cursor-pointer",
+        rx.icon(
+            "plus",
+            size=16,
+            class_name=rx.cond(
+                is_active,
+                "text-white",
+                "text-gray-400 group-hover:text-gray-200",
+            ),
+        ),
+        rx.el.span(
+            "Add New",
+            class_name=rx.cond(
+                is_active,
+                "text-sm ml-2 hidden md:inline text-white font-medium",
+                "text-sm ml-2 hidden md:inline text-gray-300 group-hover:text-white",
+            ),
+        ),
+        on_click=[
+            UIState.set_module("add"),
+            DealFormState.reset_form,
+            rx.redirect("/deals/add"),
+        ],
+        class_name=rx.cond(
+            is_active,
+            "group flex items-center px-4 py-2 bg-gray-700 rounded-lg cursor-pointer",
+            "group flex items-center px-4 py-2 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer",
+        ),
     )
 
 
 def navigation() -> rx.Component:
-    """Main navigation bar component."""
+    """Top navigation bar (Region 1) matching the architecture guide styles.
+
+    Fixed height 56px, dark background, with brand, module navigation, and action buttons.
+    """
     return rx.el.nav(
         rx.el.div(
+            # Left: Brand
             rx.el.div(
-                rx.el.div(
-                    rx.el.div(
-                        rx.el.span(
-                            "HDP",
-                            class_name="text-xl font-bold text-white tracking-tight",
-                        ),
-                        rx.el.span(
-                            f"v{VERSION}",
-                            class_name="ml-2 text-xs font-mono text-gray-400 border border-gray-700 rounded px-1.5 py-0.5",
-                        ),
-                        class_name="flex items-center",
-                    ),
-                    rx.el.div(
-                        navbar_link("Deals", "/deals"),
-                        add_new_deals_link(),
-                        navbar_link("Review AI Input", "/deals/review"),
-                        class_name="hidden md:flex items-center space-x-4 ml-10",
-                    ),
-                    class_name="flex items-center",
+                rx.icon("briefcase", size=22, class_name="text-blue-400"),
+                rx.el.span(
+                    "HDP",
+                    class_name="font-bold text-lg ml-2 text-white",
                 ),
-                rx.el.div(
-                    rx.el.div(
-                        rx.icon(
-                            "search",
-                            class_name="w-4 h-4 text-gray-400 absolute left-3 top-2.5",
-                        ),
-                        rx.el.input(
-                            placeholder="Search deals, tickers...",
-                            on_change=DealState.set_search_query.debounce(300),
-                            class_name="bg-gray-900 border border-gray-700 text-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-64 pl-10 p-2 placeholder-gray-500",
-                            default_value=DealState.search_query,
-                        ),
-                        class_name="relative hidden lg:block mr-6",
-                    ),
-                    rx.el.button(
-                        rx.icon(
-                            "refresh-cw",
-                            class_name="w-5 h-5 text-gray-400 group-hover:text-white transition-colors",
-                        ),
-                        on_click=DealState.refresh_data,
-                        class_name="group p-2 rounded-full hover:bg-gray-800 transition-colors mr-2",
-                        title="Refresh Data",
-                    ),
-                    rx.el.button(
-                        rx.el.div(
-                            rx.icon(
-                                "bell",
-                                class_name="w-5 h-5 text-gray-400 group-hover:text-white transition-colors",
-                            ),
-                            rx.cond(
-                                AlertState.unread_count > 0,
-                                rx.el.span(
-                                    AlertState.unread_count,
-                                    class_name="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-[#0f1115]",
-                                ),
-                                None,
-                            ),
-                            class_name="relative",
-                        ),
-                        on_click=[UIState.toggle_sidebar, AlertState.toggle_sidebar],
-                        class_name="group p-2 rounded-full hover:bg-gray-800 transition-colors mx-3",
-                        title="Notifications",
-                    ),
-                    rx.el.button(
-                        rx.icon(
-                            "settings",
-                            class_name="w-5 h-5 text-gray-400 group-hover:text-white transition-colors",
-                        ),
-                        on_click=DealState.show_settings,
-                        class_name="group p-2 rounded-full hover:bg-gray-800 transition-colors mx-3",
-                        title="Settings",
-                    ),
-                    rx.el.div(
-                        rx.el.button(
-                            rx.icon("user", class_name="w-5 h-5 stroke-gray-800"),
-                            class_name="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center border border-gray-600 hover:border-gray-400 transition-colors",
-                        ),
-                        class_name="relative ml-2 group cursor-pointer mx-3",
-                        on_click=DealState.logout,
-                        title="Log Out (Demo)",
-                    ),
-                    class_name="flex items-center",
+                rx.el.span(
+                    f"v{VERSION}",
+                    class_name="ml-3 text-xs font-mono text-gray-500 border border-gray-700 rounded px-1.5 py-0.5",
                 ),
-                class_name="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between",
+                class_name="flex items-center",
             ),
-            class_name="bg-[#0f1115] border-b border-gray-800 sticky top-0 z-50",
+            # Center: Module navigation items
+            rx.el.div(
+                nav_item("Deals", "folder", "/deals/list", "deals"),
+                class_name="flex items-center gap-2 ml-8",
+            ),
+            # Right: Actions (search, refresh, notifications, settings, user)
+            rx.el.div(
+                # Search input (hidden on smaller screens)
+                rx.el.div(
+                    rx.icon(
+                        "search",
+                        size=16,
+                        class_name="text-gray-500 absolute left-3 top-2.5",
+                    ),
+                    rx.el.input(
+                        placeholder="Search deals...",
+                        on_change=DealState.set_search_query.debounce(300),
+                        class_name="bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-48 pl-9 py-2 placeholder-gray-500",
+                        default_value=DealState.search_query,
+                    ),
+                    class_name="relative hidden lg:block mr-4",
+                ),
+                # Refresh button
+                rx.el.button(
+                    rx.icon(
+                        "refresh-cw",
+                        size=18,
+                        class_name="text-gray-400 group-hover:text-white",
+                    ),
+                    on_click=DealState.refresh_data,
+                    class_name="group p-2 hover:bg-gray-800 rounded-lg transition-colors",
+                    title="Refresh Data",
+                ),
+                # Notification bell with badge
+                rx.el.button(
+                    rx.el.div(
+                        rx.icon(
+                            "bell",
+                            size=18,
+                            class_name="text-gray-400 group-hover:text-white",
+                        ),
+                        rx.cond(
+                            AlertState.unread_count > 0,
+                            rx.el.span(
+                                AlertState.unread_count,
+                                class_name="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white",
+                            ),
+                            None,
+                        ),
+                        class_name="relative",
+                    ),
+                    on_click=[UIState.toggle_sidebar, AlertState.toggle_sidebar],
+                    class_name="group p-2 hover:bg-gray-800 rounded-lg transition-colors ml-1",
+                    title="Notifications",
+                ),
+                # Settings button
+                rx.el.button(
+                    rx.icon(
+                        "settings",
+                        size=18,
+                        class_name="text-gray-400 group-hover:text-white",
+                    ),
+                    on_click=DealState.show_settings,
+                    class_name="group p-2 hover:bg-gray-800 rounded-lg transition-colors ml-1",
+                    title="Settings",
+                ),
+                # User profile button
+                rx.el.button(
+                    rx.icon(
+                        "user",
+                        size=18,
+                        class_name="text-gray-400 group-hover:text-white",
+                    ),
+                    on_click=DealState.logout,
+                    class_name="group p-2 hover:bg-gray-800 rounded-lg transition-colors ml-1",
+                    title="Log Out (Demo)",
+                ),
+                class_name="flex items-center ml-auto",
+            ),
+            class_name="flex items-center w-full px-4",
         ),
+        class_name="h-14 bg-[#0f1115] border-b border-gray-800 text-white flex items-center shrink-0",
     )
 
 

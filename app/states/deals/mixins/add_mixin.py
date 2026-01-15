@@ -58,16 +58,26 @@ class DealAddMixin(rx.State, mixin=True):
 
     @rx.event
     async def edit_selected_deal(self):
-        # Needs access to selected_deal_ids and deals from ListMixin
-        # In Reflex, mixins are combined into one class, so self.selected_deal_ids works if inherited.
-        if len(self.selected_deal_ids) != 1:
+        """Edit a selected deal by redirecting to the review page."""
+        # Check if exactly one deal is selected
+        selected_count = len(self.selected_deal_ids)
+        if selected_count != 1:
             return rx.toast("Select exactly one deal to edit.", position="bottom-right")
+
         deal_id = self.selected_deal_ids[0]
         deal = next((d for d in self.deals if d.id == deal_id), None)
-        if deal:
-            form_state = await self.get_state(DealFormState)
-            form_state.load_deal_for_edit(deal, mode="edit")
-            return rx.redirect(f"/deals/add?mode=edit&id={deal_id}")
+
+        if not deal:
+            return rx.toast(
+                "Could not find the selected deal.", position="bottom-right"
+            )
+
+        # Load the deal into form state for editing
+        form_state = await self.get_state(DealFormState)
+        form_state.load_deal_for_edit(deal, mode="review")
+
+        # Redirect to the review page with the deal ID
+        return rx.redirect(f"/deals/review?id={deal_id}")
 
     def _save_deal(self, form_data: dict, status: DealStatus):
         processed_data = form_data.copy()

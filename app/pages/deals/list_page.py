@@ -1,6 +1,5 @@
 import reflex as rx
 from app.states.deals.deals_state import DealState
-from app.components.shared import alert_sidebar
 from app.components.confirmation_dialog import confirmation_dialog
 
 
@@ -42,7 +41,8 @@ def badge(text: str, color_scheme: str = "gray") -> rx.Component:
     )
 
 
-def deals_list_page() -> rx.Component:
+def deals_list_view() -> rx.Component:
+    """Deals list view content (used inside module layout)."""
     return rx.el.div(
         rx.el.div(
             rx.el.div(
@@ -313,6 +313,5 @@ def deals_list_page() -> rx.Component:
             ),
             class_name="flex-1 flex flex-col min-w-0 bg-white h-full",
         ),
-        alert_sidebar(),
         class_name="flex flex-1 h-[calc(100vh-64px)] overflow-hidden",
     )
