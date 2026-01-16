@@ -1,6 +1,6 @@
 import reflex as rx
-from app.states.schema import Alert
-from app.services.alert_service import AlertService
+from app.states.shared.schema import Alert
+from app.services.alerts.alert_service import AlertService
 
 alert_service = AlertService()
 

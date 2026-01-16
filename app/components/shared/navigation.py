@@ -8,7 +8,7 @@ import reflex as rx
 from app.states.ui.ui_state import UIState
 from app.states.alerts.alert_state import AlertState
 from app.states.deals.deals_state import DealState
-from app.states.deal_form_state import DealFormState
+from app.states.deals.deal_form_state import DealFormState
 from app.config import VERSION
 
 

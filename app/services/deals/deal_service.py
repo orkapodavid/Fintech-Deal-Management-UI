@@ -2,9 +2,10 @@ from typing import List, Optional
 from datetime import datetime
 import random
 from faker import Faker
-from app.states.schema import Deal, DealStatus
+from app.states.shared.schema import Deal, DealStatus
 
 fake = Faker()
+
 
 class DealService:
     def __init__(self):
@@ -19,16 +20,18 @@ class DealService:
 
     def get_deal_by_id(self, deal_id: str) -> Optional[Deal]:
         return next((d for d in self._deals if d.id == deal_id), None)
-    
+
     def get_deal_by_ticker(self, ticker: str) -> Optional[Deal]:
         return next((d for d in self._deals if d.ticker == ticker), None)
 
     def save_deal(self, deal: Deal) -> Deal:
         # Check if update or create
-        existing_index = next((i for i, d in enumerate(self._deals) if d.id == deal.id), None)
-        
+        existing_index = next(
+            (i for i, d in enumerate(self._deals) if d.id == deal.id), None
+        )
+
         if existing_index is not None:
-             self._deals[existing_index] = deal
+            self._deals[existing_index] = deal
         else:
             self._deals.append(deal)
         return deal
@@ -43,7 +46,7 @@ class DealService:
         sectors = ["Technology", "Healthcare", "Finance", "Energy", "Consumer"]
         countries = ["USA", "UK", "Germany", "Canada", "Singapore"]
         statuses = [s.value for s in DealStatus]
-        
+
         for _ in range(50):
             status = random.choice(statuses)
             ticker = fake.unique.lexify(text="????").upper()
@@ -55,10 +58,10 @@ class DealService:
             else:
                 warrants_strike = None
                 warrants_exp = None
-            
+
             announce_dt = fake.date_this_year()
             pricing_dt = fake.date_between(start_date=announce_dt, end_date="+30d")
-            
+
             deal = Deal(
                 ticker=ticker,
                 structure=random.choice(structures),

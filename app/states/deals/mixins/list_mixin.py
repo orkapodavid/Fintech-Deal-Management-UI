@@ -1,6 +1,6 @@
 import reflex as rx
-from app.states.schema import Deal
-from app.services.deal_service import DealService
+from app.states.shared.schema import Deal
+from app.services.deals.deal_service import DealService
 
 deal_service = DealService()
 

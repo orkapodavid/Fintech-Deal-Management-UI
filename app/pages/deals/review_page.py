@@ -1,6 +1,6 @@
 import reflex as rx
 from app.states.deals.deals_state import DealState
-from app.components.deal_form_component import deal_form_component
+from app.components.deals.deal_form_component import deal_form_component
 
 
 def format_ingest_time(timestamp: rx.Var) -> rx.Var:

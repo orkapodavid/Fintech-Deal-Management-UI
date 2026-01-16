@@ -1,6 +1,6 @@
 import reflex as rx
 from app.states.deals.deals_state import DealState
-from app.components.confirmation_dialog import confirmation_dialog
+from app.components.shared.confirmation_dialog import confirmation_dialog
 
 
 def sortable_header(label: str, column: str, align: str = "left") -> rx.Component:

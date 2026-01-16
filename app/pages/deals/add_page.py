@@ -1,7 +1,7 @@
 import reflex as rx
-from app.components.deal_form_component import deal_form_component
+from app.components.deals.deal_form_component import deal_form_component
 from app.states.deals.deals_state import DealState
-from app.states.deal_form_state import DealFormState
+from app.states.deals.deal_form_state import DealFormState
 
 
 def upload_tab_button(label: str, tab_value: str) -> rx.Component:

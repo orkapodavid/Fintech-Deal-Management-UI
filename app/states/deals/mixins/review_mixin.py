@@ -1,9 +1,9 @@
 import reflex as rx
 from typing import Optional
 from datetime import datetime
-from app.states.schema import Deal, DealStatus
-from app.states.deal_form_state import DealFormState
-from app.services.deal_service import DealService
+from app.states.shared.schema import Deal, DealStatus
+from app.states.deals.deal_form_state import DealFormState
+from app.services.deals.deal_service import DealService
 
 deal_service = DealService()
 

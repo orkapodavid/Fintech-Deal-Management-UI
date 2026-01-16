@@ -1,6 +1,6 @@
 import reflex as rx
 from app.states.alerts.alert_state import AlertState
-from app.states.schema import Alert
+from app.states.shared.schema import Alert
 
 
 def format_timestamp_display(timestamp: rx.Var) -> rx.Var:

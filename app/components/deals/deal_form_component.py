@@ -1,5 +1,5 @@
 import reflex as rx
-from app.states.deal_form_state import DealFormState
+from app.states.deals.deal_form_state import DealFormState
 from app.states.deals.deals_state import DealState
 
 

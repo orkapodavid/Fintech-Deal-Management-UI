@@ -1,7 +1,8 @@
 from typing import List
 from datetime import datetime
 import random
-from app.states.schema import Alert
+from app.states.shared.schema import Alert
+
 
 class AlertService:
     def get_alerts(self) -> List[Alert]:

@@ -3,7 +3,7 @@ import logging
 from enum import Enum
 from datetime import datetime
 from pydantic import ValidationError
-from app.states.schema import Deal
+from app.states.shared.schema import Deal
 
 
 class FormMode(str, Enum):
