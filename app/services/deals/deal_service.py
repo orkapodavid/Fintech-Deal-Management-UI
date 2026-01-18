@@ -82,7 +82,7 @@ class DealService:
                 flag_top_up=random.choice([True, False]),
                 sector=random.choice(sectors),
                 country=random.choice(countries),
-                source_file=f"{ticker}_term_sheet.pdf",
+                source_file=f"\\\\fileserver\\deals\\2026\\{ticker}_term_sheet.pdf",
                 deal_description=fake.paragraph(nb_sentences=3),
                 reg_id=f"333-{random.randint(100000, 999999)}",
                 warrants_min=warrants_min,

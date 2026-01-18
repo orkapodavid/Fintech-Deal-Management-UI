@@ -215,31 +215,17 @@ def deals_review_view() -> rx.Component:
                                             ),
                                             # Spacer to push action buttons to the right
                                             rx.el.div(class_name="flex-grow"),
-                                            # Action Buttons (Download, Open Local)
+                                            # Action Buttons (Open from Network Drive)
                                             rx.el.div(
-                                                # Download button
-                                                rx.el.a(
+                                                # Open/Download button - uses file:// URL for network paths
+                                                rx.el.button(
                                                     rx.icon(
-                                                        "download", class_name="w-4 h-4"
+                                                        "folder-open",
+                                                        class_name="w-4 h-4",
                                                     ),
-                                                    href=DealState.document_path,
-                                                    download=True,
+                                                    on_click=DealState.open_pdf_local,
                                                     class_name="p-1 rounded hover:bg-gray-100 text-gray-600 inline-flex items-center",
-                                                    title="Download PDF",
-                                                ),
-                                                # Open Local button (only show if network path)
-                                                rx.cond(
-                                                    DealState.has_network_path,
-                                                    rx.el.button(
-                                                        rx.icon(
-                                                            "external-link",
-                                                            class_name="w-4 h-4",
-                                                        ),
-                                                        on_click=DealState.open_pdf_local,
-                                                        class_name="p-1 rounded hover:bg-gray-100 text-gray-600",
-                                                        title="Open in system viewer",
-                                                    ),
-                                                    rx.fragment(),
+                                                    title="Open from Network Drive",
                                                 ),
                                                 class_name="flex items-center space-x-1",
                                             ),

@@ -36,17 +36,12 @@ class DealReviewMixin(rx.State, mixin=True):
         Returns the web-accessible path for the PDF viewer component.
         Falls back to sample file if source_file not set.
         """
-        if self.active_review_deal and self.active_review_deal.source_file:
-            source = self.active_review_deal.source_file
-            # If it's a network path (starts with \\), we need to serve it differently
-            # For now, assume files in assets folder are web-accessible
-            if source.startswith("\\\\") or source.startswith("//"):
-                # Network path - we'll use the file directly via file:// in viewer
-                # But the react-pdf viewer needs a web-accessible path
-                # For production, these would be served via a backend endpoint
-                return f"/api/documents/{self.active_review_deal.id}"
-            # Local/relative path - assume it's in assets folder
-            return source if source.startswith("/") else f"/{source}"
+        # DEMO MODE: For the prototype, we only have sample_deal.pdf in assets.
+        # The mock deals have generated filenames that don't actually exist.
+        # So we always return sample_deal.pdf for the viewer to ensure it renders.
+        # In production, this would return the actual path:
+        # if self.active_review_deal and self.active_review_deal.source_file:
+        #     # ... logic to serve actual file ...
         return "/sample_deal.pdf"
 
     @rx.var
@@ -87,10 +82,39 @@ class DealReviewMixin(rx.State, mixin=True):
 
     @rx.event
     def open_pdf_local(self):
-        """Open the PDF file from the local/network path in a new browser tab."""
+        """Open the PDF file from the local/network path.
+
+        First attempts to open via file:// URL. Browsers may block this for security,
+        so we also copy the path to clipboard and show an alert so users can paste
+        in Windows Explorer.
+        """
         if self.active_review_deal and self.active_review_deal.source_file:
-            file_url = self._get_file_url(self.active_review_deal.source_file)
-            return rx.call_script(f'window.open("{file_url}", "_blank");')
+            path = self.active_review_deal.source_file
+            file_url = self._get_file_url(path)
+            # Try to open, and also copy to clipboard as fallback
+            # The JavaScript will:
+            # 1. Try window.open (may be blocked by browser)
+            # 2. Copy path to clipboard
+            # 3. Show alert with instructions
+            return rx.call_script(f'''
+                (function() {{
+                    const path = "{path.replace("\\", "\\\\")}";
+                    const fileUrl = "{file_url}";
+                    
+                    // Copy path to clipboard
+                    navigator.clipboard.writeText(path).catch(function(err) {{
+                        console.error('Could not copy path: ', err);
+                    }});
+                    
+                    // Try to open the file URL
+                    const newWindow = window.open(fileUrl, '_blank');
+                    
+                    // If blocked, show instruction alert
+                    if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {{
+                        alert('Path copied to clipboard!\\n\\nBrowser blocked direct file access.\\nPaste the path in Windows Explorer to open:\\n\\n' + path);
+                    }}
+                }})();
+            ''')
 
     @rx.event
     def on_pdf_load_success(self, info: dict):

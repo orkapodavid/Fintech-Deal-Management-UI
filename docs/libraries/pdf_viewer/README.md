@@ -144,6 +144,17 @@ def pdf_viewer_page() -> rx.Component:
 | `loading` | `str \| Component` | Content shown while PDF loads |
 | `on_load_success` | `EventHandler` | Callback with `{numPages: int}` |
 
+> [!NOTE]
+> **Demo Mode**: The current implementation of `document_path` in `review_mixin.py` forces all PDFs to load `/section_deal.pdf` (or similar sample) to ensure the viewer works with mock data where actual files don't exist. In production, this should return the real file path.
+
+### Network Drive Access
+
+The viewer supports opening files from network shares (e.g., `\\fileserver\deals\...`).
+- **Button**: A "folder-open" button appears for network paths.
+- **Behavior**: 
+    1. Attempts to open `file://` URL directly.
+    2. If blocked by browser security (common), it **automatically copies the path to the clipboard** and shows an alert instructing the user to paste it into Windows Explorer.
+
 ### Page
 
 | Prop | Type | Default | Description |
