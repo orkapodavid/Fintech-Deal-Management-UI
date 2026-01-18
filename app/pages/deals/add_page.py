@@ -65,24 +65,118 @@ def deals_add_view() -> rx.Component:
                         ),
                         rx.cond(
                             DealState.upload_tab == "upload",
+                            # Real file upload with rx.upload
                             rx.el.div(
-                                rx.icon(
-                                    "cloud-upload",
-                                    class_name="mx-auto h-12 w-12 text-gray-400",
+                                # Upload drop zone
+                                rx.upload(
+                                    rx.el.div(
+                                        rx.cond(
+                                            rx.selected_files("deal_upload").length()
+                                            > 0,
+                                            rx.el.div(
+                                                rx.icon(
+                                                    "file-text",
+                                                    class_name="mx-auto h-12 w-12 text-blue-500",
+                                                ),
+                                                rx.foreach(
+                                                    rx.selected_files("deal_upload"),
+                                                    lambda x: rx.el.p(
+                                                        x,
+                                                        class_name="mt-2 text-sm font-medium text-blue-600",
+                                                    ),
+                                                ),
+                                                rx.el.p(
+                                                    "Click to change file",
+                                                    class_name="mt-1 text-xs text-gray-400",
+                                                ),
+                                                class_name="text-center",
+                                            ),
+                                            rx.el.div(
+                                                rx.icon(
+                                                    "cloud-upload",
+                                                    class_name="mx-auto h-12 w-12 text-gray-400",
+                                                ),
+                                                rx.el.p(
+                                                    "Drag and drop files here or click to select",
+                                                    class_name="mt-2 text-sm font-medium text-gray-900",
+                                                ),
+                                                rx.el.p(
+                                                    "Supported formats: PDF, DOCX, DOC (up to 10MB)",
+                                                    class_name="mt-1 text-xs text-gray-500",
+                                                ),
+                                                class_name="text-center",
+                                            ),
+                                        ),
+                                    ),
+                                    id="deal_upload",
+                                    multiple=False,
+                                    class_name="border-2 border-dashed border-gray-300 rounded-lg p-12 hover:border-blue-500 transition-colors cursor-pointer w-full",
                                 ),
-                                rx.el.p(
-                                    "Click to upload or drag and drop",
-                                    class_name="mt-2 text-sm font-medium text-gray-900",
+                                # Upload Trigger Button
+                                rx.el.div(
+                                    rx.button(
+                                        "Upload Selected File",
+                                        on_click=DealState.on_file_upload(
+                                            rx.upload_files("deal_upload")
+                                        ),
+                                        variant="soft",
+                                    ),
+                                    class_name="flex justify-center mt-4",
                                 ),
-                                rx.el.p(
-                                    "Supported formats: PDF, DOCX (Term Sheets, Prospectus)",
-                                    class_name="mt-1 text-xs text-gray-500",
+                                # Upload progress
+                                rx.cond(
+                                    DealState.is_uploading,
+                                    rx.el.div(
+                                        rx.spinner(size="2"),
+                                        rx.el.span(
+                                            "Uploading...",
+                                            class_name="ml-2 text-sm text-gray-600",
+                                        ),
+                                        class_name="flex items-center justify-center mt-4",
+                                    ),
                                 ),
-                                rx.el.button(
-                                    "Browse Files",
-                                    class_name="mt-4 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50",
+                                # Error display
+                                rx.cond(
+                                    DealState.upload_error != "",
+                                    rx.el.div(
+                                        rx.icon(
+                                            "alert-triangle",
+                                            class_name="w-4 h-4 text-red-500 mr-2",
+                                        ),
+                                        rx.el.span(
+                                            DealState.upload_error,
+                                            class_name="text-sm text-red-600",
+                                        ),
+                                        class_name="flex items-center mt-4 p-3 bg-red-50 border border-red-200 rounded-lg",
+                                    ),
                                 ),
-                                class_name="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center hover:border-blue-500 transition-colors cursor-pointer",
+                                # Success: Show uploaded file
+                                rx.cond(
+                                    DealState.has_uploaded_file,
+                                    rx.el.div(
+                                        rx.icon(
+                                            "file-text",
+                                            class_name="w-5 h-5 text-green-600 mr-2",
+                                        ),
+                                        rx.el.span(
+                                            DealState.uploaded_file.get("name", ""),
+                                            class_name="text-sm font-medium text-gray-900 mr-2",
+                                        ),
+                                        rx.el.span(
+                                            DealState.uploaded_file.get(
+                                                "size_formatted", ""
+                                            ),
+                                            class_name="text-xs text-gray-500 px-2 py-0.5 bg-gray-100 rounded",
+                                        ),
+                                        rx.el.button(
+                                            rx.icon("x", class_name="w-4 h-4"),
+                                            on_click=DealState.clear_uploaded_file,
+                                            class_name="ml-auto p-1 text-gray-400 hover:text-gray-600",
+                                        ),
+                                        class_name="flex items-center mt-4 p-3 bg-green-50 border border-green-200 rounded-lg",
+                                    ),
+                                ),
+                                class_name="w-full",
                             ),
                             rx.el.div(
                                 rx.el.textarea(

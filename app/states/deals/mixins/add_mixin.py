@@ -3,6 +3,7 @@ from datetime import datetime
 from app.states.shared.schema import Deal, DealStatus
 from app.states.deals.deal_form_state import DealFormState
 from app.services.deals.deal_service import DealService
+from app.services.deals.file_upload_service import FileUploadService
 
 deal_service = DealService()
 
@@ -13,9 +14,58 @@ class DealAddMixin(rx.State, mixin=True):
     upload_tab: str = "upload"
     form_data: dict = {}
 
+    # File upload state
+    uploaded_file: dict = {}
+    upload_error: str = ""
+    is_uploading: bool = False
+
+    @rx.var
+    def has_uploaded_file(self) -> bool:
+        return bool(self.uploaded_file)
+
     @rx.event
     def set_upload_tab(self, tab: str):
         self.upload_tab = tab
+
+    @rx.event
+    async def on_file_upload(self, files: list[rx.UploadFile]):
+        """
+        Handle file upload from rx.upload component.
+
+        Args:
+            files: List of uploaded file objects
+        """
+        self.is_uploading = True
+        self.upload_error = ""
+
+        service = FileUploadService()
+
+        for f in files:
+            try:
+                # Read file content
+                upload_data = await f.read()
+                original_name = f.filename
+
+                # Validate file type
+                if not service.validate_file_type(original_name):
+                    self.upload_error = f"Invalid file type: {original_name}"
+                    continue
+
+                # Save to permanent storage
+                self.uploaded_file = await service.save_uploaded_file(
+                    data=upload_data, original_name=original_name
+                )
+
+            except Exception as e:
+                self.upload_error = f"Upload failed: {str(e)}"
+
+        self.is_uploading = False
+
+    @rx.event
+    def clear_uploaded_file(self):
+        """Clear the uploaded file state."""
+        self.uploaded_file = {}
+        self.upload_error = ""
 
     @rx.event
     def handle_form_change(self, field: str, value: str):

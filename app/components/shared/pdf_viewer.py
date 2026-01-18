@@ -28,6 +28,7 @@ class Document(rx.NoSSRComponent):
     Props:
         file: Path to PDF file, URL, or binary data (str | bytes | dict)
         on_load_success: Callback when PDF loads, receives dict with numPages
+        on_load_error: Callback when PDF fails to load
         loading: Component to display while PDF is loading
     """
 
@@ -39,7 +40,16 @@ class Document(rx.NoSSRComponent):
     loading: rx.Var[str] | None = None
 
     # Event handler for when PDF loads successfully
-    on_load_success: rx.EventHandler[lambda info: [info]]
+    # react-pdf calls onLoadSuccess with a PDF document proxy object
+    # We extract just numPages to avoid circular reference serialization issues
+    on_load_success: rx.EventHandler[lambda pdf: [{"numPages": pdf.numPages}]]
+    on_load_error: rx.EventHandler[lambda error: [{"message": str(error)}]]
+
+    # Explicitly map snake_case props to camelCase for React
+    _rename_props = {
+        "on_load_success": "onLoadSuccess",
+        "on_load_error": "onLoadError",
+    }
 
     def add_imports(self) -> dict:
         """Import pdfjs for worker configuration."""
@@ -51,10 +61,10 @@ class Document(rx.NoSSRComponent):
         }
 
     def add_hooks(self) -> list[str]:
-        """Configure the PDF.js worker using CDN."""
+        """Configure the PDF.js worker using CDN with explicit version."""
         return [
-            # Set up PDF.js worker from CDN
-            "pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;",
+            # React-pdf 9.1.1 uses pdfjs-dist 4.4.168
+            'pdfjs.GlobalWorkerOptions.workerSrc = "https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs";',
         ]
 
 
@@ -77,16 +87,16 @@ class Page(rx.NoSSRComponent):
 
     page_number: rx.Var[int]
     scale: rx.Var[float] | None = None
+    width: rx.Var[int] | None = None
     render_annotation_layer: rx.Var[bool] | None = None
     render_text_layer: rx.Var[bool] | None = None
 
-    def _rename_props(self) -> dict[str, str]:
-        """Map snake_case props to React's camelCase props."""
-        return {
-            "page_number": "pageNumber",
-            "render_annotation_layer": "renderAnnotationLayer",
-            "render_text_layer": "renderTextLayer",
-        }
+    _rename_props = {
+        "page_number": "pageNumber",
+        "render_annotation_layer": "renderAnnotationLayer",
+        "render_text_layer": "renderTextLayer",
+        "width": "width",
+    }
 
 
 # Convenience function to create a basic PDF viewer with navigation
@@ -149,10 +159,9 @@ def pdf_viewer_with_nav(
             file=file,
             on_load_success=on_load_success,
             loading=rx.center(
-                rx.spinner(size="3"),
                 rx.text("Loading PDF...", color_scheme="gray"),
-                direction="column",
-                gap="2",
+                width="100%",
+                padding="20px",
             ),
         ),
         spacing="4",

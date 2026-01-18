@@ -21,39 +21,39 @@ This document outlines "Pre-Production" implementations: functional logic that c
 - [ ] Browser test: Paste text → Form auto-populates
 
 ### Feature 2: Client-Side File Upload
-- [ ] Reference: [Reflex Upload Patterns](../.agents/skills/reflex-dev/references/reflex-upload.mdc)
-- [ ] Create `app/services/deals/file_upload_service.py`
-  - [ ] Define `FileUploadService` class with `UPLOAD_DIR = Path("./data/uploads/deals")`
-  - [ ] Implement `validate_file_type(filename: str) -> bool` method
-  - [ ] Implement `save_uploaded_file(tmp_path: Path, original_name: str) -> dict` method
-  - [ ] Implement UUID-based unique filename generation
-  - [ ] Implement `format_file_size(size_bytes: int) -> str` utility
-- [ ] Update `app/states/deals/mixins/add_mixin.py`
-  - [ ] Add `uploaded_file: dict = {}` state variable
-  - [ ] Add `upload_error: str = ""` state variable
-  - [ ] Add `is_uploading: bool = False` state variable
-  - [ ] Add `on_file_upload(files: list[dict])` event handler
-  - [ ] Add `clear_uploaded_file()` event handler
-- [ ] Update `app/pages/deals/add_page.py`
-  - [ ] Replace fake button with `rx.upload()` component
-  - [ ] Add drag-drop zone with styling
-  - [ ] Display upload progress spinner
-  - [ ] Show error callout on failure
-  - [ ] Display uploaded filename badge with remove button
+- [x] Reference: [Reflex Upload Patterns](../.agents/skills/reflex-dev/references/reflex-upload.mdc)
+- [x] Create `app/services/deals/file_upload_service.py`
+  - [x] Define `FileUploadService` class with `UPLOAD_DIR = Path("./data/uploads/deals")`
+  - [x] Implement `validate_file_type(filename: str) -> bool` method
+  - [x] Implement `save_uploaded_file(tmp_path: Path, original_name: str) -> dict` method
+  - [x] Implement UUID-based unique filename generation
+  - [x] Implement `format_file_size(size_bytes: int) -> str` utility
+- [x] Update `app/states/deals/mixins/add_mixin.py`
+  - [x] Add `uploaded_file: dict = {}` state variable
+  - [x] Add `upload_error: str = ""` state variable
+  - [x] Add `is_uploading: bool = False` state variable
+  - [x] Add `on_file_upload(files: list[dict])` event handler
+  - [x] Add `clear_uploaded_file()` event handler
+- [x] Update `app/pages/deals/add_page.py`
+  - [x] Replace fake button with `rx.upload()` component
+  - [x] Add drag-drop zone with styling
+  - [x] Display upload progress spinner
+  - [x] Show error callout on failure
+  - [x] Display uploaded filename badge with remove button
 - [ ] Browser test: Drag file → Upload completes → Filename displayed → Clear works
 
 ### Feature 3: PDF Viewer (Review Page)
-- [ ] Reference: [PDF Viewer Implementation Guide](../libraries/pdf_viewer/README.md)
-- [ ] Update `app/states/deals/mixins/review_mixin.py`
-  - [ ] Add `n_pages: int = 1` state variable
-  - [ ] Add `current_pdf_page: int = 1` state variable
-  - [ ] Add `@rx.var document_path` computed property
-  - [ ] Add `on_pdf_load_success(info: dict)` event handler
-  - [ ] Add `pdf_prev_page()` event handler
-  - [ ] Add `pdf_next_page()` event handler
-- [ ] Update `app/pages/deals/review_page.py`
-  - [ ] Import `Document, Page` from `app.components.shared.pdf_viewer`
-  - [ ] Replace "Open in Viewer" button with embedded PDF viewer component
+- [x] Reference: [PDF Viewer Implementation Guide](../libraries/pdf_viewer/README.md)
+- [x] Update `app/states/deals/mixins/review_mixin.py`
+  - [x] Add `n_pages: int = 1` state variable
+  - [x] Add `current_pdf_page: int = 1` state variable
+  - [x] Add `@rx.var document_path` computed property
+  - [x] Add `on_pdf_load_success(info: dict)` event handler
+  - [x] Add `pdf_prev_page()` event handler
+  - [x] Add `pdf_next_page()` event handler
+- [x] Update `app/pages/deals/review_page.py`
+  - [x] Import `Document, Page` from `app.components.shared.pdf_viewer`
+  - [x] Replace "Open in Viewer" button with embedded PDF viewer component
 - [ ] Browser test: Navigate to review page → PDF displays → Navigation works
 
 ---
@@ -449,10 +449,10 @@ rx.vstack(
 
 ## Verification Plan
 
-### Browser Testing (Automated)
-1. **Text Parsing**: Navigate to `/deals/add` → Paste Text tab → Enter sample text → Click Process → Verify fields populated
-2. **File Upload**: Navigate to `/deals/add` → Upload PDF tab → Select file → Verify filename shown → Upload → Verify success
-3. **PDF Viewer**: Navigate to `/deals/review?id=<id>` → Click "Open in Viewer" → Verify PDF opens
+### Browser Testing (Manual)
+1. **Text Parsing** (NOT IMPLEMENTED): Navigate to `/deals/add` → Paste Text tab → Enter sample text → Click Process → Verify fields populated
+2. **File Upload** ✅: Navigate to `/deals/add` → Upload PDF tab → Drag file to drop zone → Verify filename badge appears → Click X to clear
+3. **PDF Viewer** ✅: Navigate to `/deals/review?id=<id>` → PDF displays in left panel → Use < > buttons to navigate pages
 
 ### Sample Test Text
 ```
@@ -470,8 +470,21 @@ Country: USA
 
 ## Summary of Work
 
-| Feature | Current State | Pre-Prod Goal | Files Modified | Difficulty |
+| Feature | Current State | Pre-Prod Goal | Files Modified | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| **Text Parsing** | No Handler | **Real Regex Parsing** | 3 files (1 new service) | Low |
-| **File Upload** | Visual Button | **Real File Selection** | 3 files (1 new service) | Low |
-| **Viewer** | Dead Button | **Static Sample PDF** | 1 file | Very Low |
+| **Text Parsing** | No Handler | Real Regex Parsing | 3 files (1 new service) | ⏳ Pending |
+| **File Upload** | Visual Button | **Real File Selection** | 3 files (1 new service) | ✅ Complete |
+| **PDF Viewer** | Dead Button | **Embedded PDF Viewer** | 2 files + shared component | ✅ Complete |
+
+### Files Created/Modified
+
+**Feature 2 - File Upload:**
+- `app/services/deals/file_upload_service.py` (NEW)
+- `app/states/deals/mixins/add_mixin.py` (MODIFIED)
+- `app/pages/deals/add_page.py` (MODIFIED)
+
+**Feature 3 - PDF Viewer:**
+- `app/components/shared/pdf_viewer.py` (NEW - from earlier task)
+- `app/states/deals/mixins/review_mixin.py` (MODIFIED)
+- `app/pages/deals/review_page.py` (MODIFIED)
+

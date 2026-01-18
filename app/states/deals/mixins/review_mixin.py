@@ -13,6 +13,139 @@ class DealReviewMixin(rx.State, mixin=True):
 
     active_review_deal: Optional[Deal] = None
 
+    # PDF Viewer state
+    n_pages: int = 1
+    current_pdf_page: int = 1
+    pdf_scale: float = 1.25  # Default readable zoom
+    pdf_fit_width: bool = False  # Start with manual scale mode for reliable behavior
+    pdf_container_width: int = 600  # Approximate width for 1/3 column
+
+    @rx.var
+    def pdf_effective_scale(self) -> float:
+        """Compute effective scale. When fit-width, calculate from container."""
+        if self.pdf_fit_width:
+            # Approximate: assume typical A4 page width ~600px at scale 1.0
+            # Container width / page width gives us the scale
+            return max(0.5, min(2.0, self.pdf_container_width / 600))
+        return self.pdf_scale
+
+    @rx.var
+    def document_path(self) -> str:
+        """Return path to the deal's PDF document for the viewer.
+
+        Returns the web-accessible path for the PDF viewer component.
+        Falls back to sample file if source_file not set.
+        """
+        if self.active_review_deal and self.active_review_deal.source_file:
+            source = self.active_review_deal.source_file
+            # If it's a network path (starts with \\), we need to serve it differently
+            # For now, assume files in assets folder are web-accessible
+            if source.startswith("\\\\") or source.startswith("//"):
+                # Network path - we'll use the file directly via file:// in viewer
+                # But the react-pdf viewer needs a web-accessible path
+                # For production, these would be served via a backend endpoint
+                return f"/api/documents/{self.active_review_deal.id}"
+            # Local/relative path - assume it's in assets folder
+            return source if source.startswith("/") else f"/{source}"
+        return "/sample_deal.pdf"
+
+    @rx.var
+    def document_display_path(self) -> str:
+        """Return the full file path to display in the UI."""
+        if self.active_review_deal and self.active_review_deal.source_file:
+            return self.active_review_deal.source_file
+        return "/sample_deal.pdf (Demo)"
+
+    @rx.var
+    def document_network_path(self) -> str:
+        """Return the network/local file path for direct access."""
+        if self.active_review_deal and self.active_review_deal.source_file:
+            return self.active_review_deal.source_file
+        return ""
+
+    @rx.var
+    def has_network_path(self) -> bool:
+        """Check if the document has a network path for local access."""
+        if self.active_review_deal and self.active_review_deal.source_file:
+            path = self.active_review_deal.source_file
+            # Network paths start with \\ or //
+            return path.startswith("\\\\") or path.startswith("//") or ":\\" in path
+        return False
+
+    def _get_file_url(self, path: str) -> str:
+        """Convert a local/network path to a file:// URL."""
+        if not path:
+            return ""
+        # Handle Windows network paths: \\server\share -> file://///server/share
+        if path.startswith("\\\\"):
+            return "file:///" + path.replace("\\", "/")
+        # Handle Windows local paths: C:\path -> file:///C:/path
+        if len(path) > 1 and path[1] == ":":
+            return "file:///" + path.replace("\\", "/")
+        # Unix paths
+        return "file://" + path
+
+    @rx.event
+    def open_pdf_local(self):
+        """Open the PDF file from the local/network path in a new browser tab."""
+        if self.active_review_deal and self.active_review_deal.source_file:
+            file_url = self._get_file_url(self.active_review_deal.source_file)
+            return rx.call_script(f'window.open("{file_url}", "_blank");')
+
+    @rx.event
+    def on_pdf_load_success(self, info: dict):
+        """Handle PDF load success, update page count."""
+        num_pages = info.get("numPages", 1)
+        self.n_pages = int(num_pages) if num_pages else 1
+        # Clamp current page to valid range
+        if self.current_pdf_page > self.n_pages:
+            self.current_pdf_page = self.n_pages
+        if self.current_pdf_page < 1:
+            self.current_pdf_page = 1
+
+    @rx.event
+    def on_pdf_load_error(self, error: dict):
+        """Handle PDF load error."""
+        pass  # Silently handle for now; can add toast notification if needed
+
+    @rx.event
+    def pdf_prev_page(self):
+        """Navigate to previous PDF page."""
+        self.current_pdf_page = max(1, self.current_pdf_page - 1)
+
+    @rx.event
+    def pdf_next_page(self):
+        """Navigate to next PDF page."""
+        self.current_pdf_page = min(self.n_pages, self.current_pdf_page + 1)
+
+    @rx.event
+    def pdf_zoom_in(self):
+        """Zoom in (increases scale)."""
+        self.pdf_fit_width = False
+        self.pdf_scale = min(3.0, round(self.pdf_scale + 0.25, 2))
+
+    @rx.event
+    def pdf_zoom_out(self):
+        """Zoom out (decreases scale)."""
+        self.pdf_fit_width = False
+        self.pdf_scale = max(0.5, round(self.pdf_scale - 0.25, 2))
+
+    @rx.event
+    def pdf_zoom_reset(self):
+        """Reset zoom to default."""
+        self.pdf_fit_width = False
+        self.pdf_scale = 1.25
+
+    @rx.event
+    def pdf_toggle_fit_width(self):
+        """Toggle fit-to-width mode."""
+        self.pdf_fit_width = not self.pdf_fit_width
+
+    @rx.event
+    def set_pdf_container_width(self, width: int):
+        """Update container width from client side."""
+        self.pdf_container_width = width
+
     @rx.var
     def pending_deals(self) -> list[Deal]:
         # Requires self.deals from ListMixin or Main State

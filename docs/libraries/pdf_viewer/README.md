@@ -30,7 +30,13 @@ class Document(rx.NoSSRComponent):
 
     file: rx.Var[str]
     loading: rx.Var[str] | None = None
-    on_load_success: rx.EventHandler[lambda info: [info]]
+    
+    # CRITICAL: Extract only numPages to avoid circular reference errors!
+    on_load_success: rx.EventHandler[lambda pdf: [{"numPages": pdf.numPages}]]
+
+    _rename_props = {
+        "on_load_success": "onLoadSuccess",
+    }
 
     def add_imports(self) -> dict:
         return {
@@ -41,7 +47,7 @@ class Document(rx.NoSSRComponent):
 
     def add_hooks(self) -> list[str]:
         return [
-            'pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;',
+            'pdfjs.GlobalWorkerOptions.workerSrc = "https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs";',
         ]
 
 
@@ -143,26 +149,109 @@ def pdf_viewer_page() -> rx.Component:
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `page_number` | `int` | Required | 1-indexed page number |
-| `scale` | `float` | `1.0` | Zoom scale factor |
+| `scale` | `float` | `1.0` | Zoom scale factor (mutually exclusive with width) |
+| `width` | `int` | `None` | Target width in pixels (mutually exclusive with scale) |
 | `render_annotation_layer` | `bool` | `True` | Show PDF annotations |
 | `render_text_layer` | `bool` | `True` | Enable text selection |
 
 ---
+
+## Advanced Usage (Zoom & Fit Width)
+
+To implement zoom controls and fit-to-width, manage state variables for `scale` and `fit_width` mode.
+
+```python
+# State
+pdf_scale: float = 1.0
+pdf_fit_width: bool = True
+pdf_container_width: int = 800
+
+# View
+Document.create(
+    Page.create(
+        page_number=State.page,
+        # Use width if in fit mode, otherwise scale
+        width=rx.cond(State.pdf_fit_width, State.pdf_container_width, None),
+        scale=rx.cond(State.pdf_fit_width, None, State.pdf_scale),
+    ),
+    file="..."
+)
+```
 
 ## Key Implementation Details
 
 | Aspect | Implementation |
 |--------|----------------|
 | Base class | `rx.NoSSRComponent` (browser APIs required) |
-| Worker | CDN-loaded via `add_hooks()` |
+| Worker | CDN-loaded via `add_hooks()` (pdfjs-dist@4.4.168) |
 | CSS | Auto-imported via `add_imports()` |
 | Prop conversion | `_rename_props()` for camelCase |
 
 ## PDF File Sources
 
-- **Local**: Place in `assets/` folder, reference as `/assets/docs/file.pdf`
+- **Local**: Place in `assets/` folder, reference as `/file.pdf`
 - **Remote URL**: Use full URL (CORS must be enabled)
 - **Dynamic**: Pass URL from state variable
+
+---
+
+## ⚠️ CRITICAL: Event Handler Serialization Issue
+
+> [!CAUTION]
+> **Do NOT pass the entire PDF document object in `on_load_success`!**
+
+The react-pdf `onLoadSuccess` callback receives a **PDF document proxy object** with **circular references**. If you pass this entire object to Reflex, it causes a `Maximum call stack size exceeded` error during WebSocket serialization.
+
+### ❌ WRONG (causes circular reference error)
+
+```python
+# This will FAIL with "Maximum call stack size exceeded"
+on_load_success: rx.EventHandler[lambda info: [info]]
+```
+
+### ✅ CORRECT (extract only numPages)
+
+```python
+# Extract only the numPages property to avoid circular references
+on_load_success: rx.EventHandler[lambda pdf: [{"numPages": pdf.numPages}]]
+```
+
+### Why This Happens
+
+1. react-pdf's `onLoadSuccess` receives a `PDFDocumentProxy` object
+2. This object contains circular references (internal PDF.js structures)
+3. Reflex uses socket.io to serialize event payloads to JSON
+4. JSON serialization of circular objects causes infinite recursion → stack overflow
+
+### Complete Working Implementation
+
+```python
+class Document(rx.NoSSRComponent):
+    library = "react-pdf@9.1.1"
+    tag = "Document"
+
+    file: rx.Var[str]
+    loading: rx.Var[str] | None = None
+    
+    # CRITICAL: Extract only numPages, NOT the entire pdf object
+    on_load_success: rx.EventHandler[lambda pdf: [{"numPages": pdf.numPages}]]
+    on_load_error: rx.EventHandler[lambda error: [{"message": str(error)}]]
+
+    _rename_props = {
+        "on_load_success": "onLoadSuccess",
+        "on_load_error": "onLoadError",
+    }
+```
+
+### State Handler
+
+```python
+@rx.event
+def on_pdf_load_success(self, info: dict):
+    """Handle PDF load success, update page count."""
+    num_pages = info.get("numPages", 1)
+    self.n_pages = int(num_pages) if num_pages else 1
+```
 
 ---
 
