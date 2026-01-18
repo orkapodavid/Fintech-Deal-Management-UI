@@ -11,6 +11,11 @@ from app.components.shared.alert_sidebar import (
 from app.components.shared.confirmation_dialog import confirmation_dialog
 from app.components.shared.layout import layout, page_layout
 from app.components.shared.module_layout import module_layout, sub_tab_link
+from app.components.shared.pdf_viewer import (
+    Document as PdfDocument,
+    Page as PdfPage,
+    pdf_viewer_with_nav,
+)
 
 __all__ = [
     # Navigation
@@ -30,4 +35,8 @@ __all__ = [
     # Module Layout
     "module_layout",
     "sub_tab_link",
+    # PDF Viewer
+    "PdfDocument",
+    "PdfPage",
+    "pdf_viewer_with_nav",
 ]

@@ -21,30 +21,40 @@ This document outlines "Pre-Production" implementations: functional logic that c
 - [ ] Browser test: Paste text → Form auto-populates
 
 ### Feature 2: Client-Side File Upload
+- [ ] Reference: [Reflex Upload Patterns](../.agents/skills/reflex-dev/references/reflex-upload.mdc)
 - [ ] Create `app/services/deals/file_upload_service.py`
-  - [ ] Define `FileUploadService` class
+  - [ ] Define `FileUploadService` class with `UPLOAD_DIR = Path("./data/uploads/deals")`
   - [ ] Implement `validate_file_type(filename: str) -> bool` method
-  - [ ] Implement `save_uploaded_file(file: rx.UploadFile) -> dict` async method
+  - [ ] Implement `save_uploaded_file(tmp_path: Path, original_name: str) -> dict` method
+  - [ ] Implement UUID-based unique filename generation
   - [ ] Implement `format_file_size(size_bytes: int) -> str` utility
 - [ ] Update `app/states/deals/mixins/add_mixin.py`
-  - [ ] Add `selected_file: dict = {}` state variable
+  - [ ] Add `uploaded_file: dict = {}` state variable
+  - [ ] Add `upload_error: str = ""` state variable
   - [ ] Add `is_uploading: bool = False` state variable
-  - [ ] Add `upload_progress: str = ""` state variable
-  - [ ] Add `handle_file_upload(files: list[rx.UploadFile])` async handler
-  - [ ] Add `clear_selected_file()` event handler
+  - [ ] Add `on_file_upload(files: list[dict])` event handler
+  - [ ] Add `clear_uploaded_file()` event handler
 - [ ] Update `app/pages/deals/add_page.py`
-  - [ ] Replace `rx.el.button("Browse Files")` with `rx.upload()` component
-  - [ ] Add "Upload Selected File" trigger button
-  - [ ] Display selected filename badge when file exists
-  - [ ] Show upload progress indicator
-- [ ] Browser test: Select file → Filename displayed → Upload works
+  - [ ] Replace fake button with `rx.upload()` component
+  - [ ] Add drag-drop zone with styling
+  - [ ] Display upload progress spinner
+  - [ ] Show error callout on failure
+  - [ ] Display uploaded filename badge with remove button
+- [ ] Browser test: Drag file → Upload completes → Filename displayed → Clear works
 
-### Feature 3: Static PDF Viewer
-- [ ] Update `app/states/deals/mixins/add_mixin.py`
+### Feature 3: PDF Viewer (Review Page)
+- [ ] Reference: [PDF Viewer Implementation Guide](../libraries/pdf_viewer/README.md)
+- [ ] Update `app/states/deals/mixins/review_mixin.py`
+  - [ ] Add `n_pages: int = 1` state variable
+  - [ ] Add `current_pdf_page: int = 1` state variable
   - [ ] Add `@rx.var document_path` computed property
+  - [ ] Add `on_pdf_load_success(info: dict)` event handler
+  - [ ] Add `pdf_prev_page()` event handler
+  - [ ] Add `pdf_next_page()` event handler
 - [ ] Update `app/pages/deals/review_page.py`
-  - [ ] Update "Open in Viewer" button to `rx.el.a(href=..., target="_blank")`
-- [ ] Browser test: Click "Open in Viewer" → PDF opens in new tab
+  - [ ] Import `Document, Page` from `app.components.shared.pdf_viewer`
+  - [ ] Replace "Open in Viewer" button with embedded PDF viewer component
+- [ ] Browser test: Navigate to review page → PDF displays → Navigation works
 
 ---
 
@@ -167,42 +177,59 @@ Connect UI elements:
 
 ## 2. Client-Side File Handling (Add Deal Page)
 
+> **Reference**: [Reflex Upload Patterns](../../.agents/skills/reflex-dev/references/reflex-upload.mdc)
+
 ### 2.1 Create FileUploadService
 
 **File**: `app/services/deals/file_upload_service.py` (NEW)
 
 ```python
-import reflex as rx
+import os
+import shutil
 from pathlib import Path
-from typing import Optional
+from uuid import uuid4
 
 class FileUploadService:
-    """Service for handling file uploads."""
+    """Service for handling deal document uploads."""
     
     ALLOWED_EXTENSIONS = [".pdf", ".docx", ".doc"]
-    UPLOAD_DIR = Path("./uploads")
+    UPLOAD_DIR = Path("./data/uploads/deals")
     
     def __init__(self):
-        self.UPLOAD_DIR.mkdir(exist_ok=True)
+        self.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     
     def validate_file_type(self, filename: str) -> bool:
         """Check if file extension is allowed."""
-        ext = Path(filename).suffix.lower()
+        _, ext = os.path.splitext(filename.lower())
         return ext in self.ALLOWED_EXTENSIONS
     
-    async def save_uploaded_file(self, file: rx.UploadFile) -> dict:
-        """Save uploaded file and return metadata."""
-        upload_data = await file.read()
-        file_size = len(upload_data)
-        outfile = self.UPLOAD_DIR / file.filename
+    def save_uploaded_file(self, tmp_path: Path, original_name: str) -> dict:
+        """
+        Move file from temp location to custom storage.
         
-        with open(outfile, "wb") as f:
-            f.write(upload_data)
+        Args:
+            tmp_path: Temporary file path from Reflex upload
+            original_name: Original filename from upload
+            
+        Returns:
+            dict with name, path, size, size_formatted
+        """
+        filename = os.path.basename(original_name)
+        _, ext = os.path.splitext(filename.lower())
+        
+        # Generate unique filename to prevent collisions
+        unique_name = f"{os.path.splitext(filename)[0]}-{uuid4().hex[:8]}{ext}"
+        dest = self.UPLOAD_DIR / unique_name
+        
+        # Move from temp to permanent storage
+        shutil.move(str(tmp_path), str(dest))
+        file_size = dest.stat().st_size
         
         return {
-            "name": file.filename,
+            "name": filename,
+            "unique_name": unique_name,
+            "path": str(dest),
             "size": file_size,
-            "path": str(outfile),
             "size_formatted": self.format_file_size(file_size),
         }
     
@@ -221,29 +248,198 @@ class FileUploadService:
 
 **File**: `app/states/deals/mixins/add_mixin.py` (MODIFY)
 
-Add file upload state and handlers.
+Add file upload state and `on_upload` event handler:
+
+```python
+from pathlib import Path
+from app.services.deals.file_upload_service import FileUploadService
+
+class AddMixin(rx.State):
+    # File upload state
+    uploaded_file: dict = {}  # {name, path, size_formatted}
+    upload_error: str = ""
+    is_uploading: bool = False
+
+    @rx.event
+    def on_file_upload(self, files: list[dict]):
+        """
+        Handle file upload from rx.upload component.
+        
+        Reflex posts files to /_upload route, then calls this handler
+        with file metadata including temporary path.
+        """
+        self.is_uploading = True
+        self.upload_error = ""
+        
+        service = FileUploadService()
+        
+        for f in files:
+            try:
+                # Extract temp path and original name from payload
+                tmp_path = Path(f.get("path", ""))
+                original_name = f.get("name", tmp_path.name)
+                
+                # Validate file type
+                if not service.validate_file_type(original_name):
+                    self.upload_error = f"Invalid file type: {original_name}"
+                    continue
+                
+                # Verify temp file exists
+                if not tmp_path.exists():
+                    self.upload_error = f"Temp file not found"
+                    continue
+                
+                # Save to permanent storage
+                self.uploaded_file = service.save_uploaded_file(tmp_path, original_name)
+                
+            except Exception as e:
+                self.upload_error = f"Upload failed: {str(e)}"
+        
+        self.is_uploading = False
+
+    @rx.event
+    def clear_uploaded_file(self):
+        """Clear the uploaded file state."""
+        self.uploaded_file = {}
+        self.upload_error = ""
+```
 
 ### 2.3 Update Add Page
 
 **File**: `app/pages/deals/add_page.py` (MODIFY)
 
-Replace fake button with `rx.upload()` component following the pattern in `.agents/skills/reflex-dev/examples/file_upload.py`.
+Replace fake button with `rx.upload()` component:
+
+```python
+# Client-side file filter (advisory only - validate server-side)
+ACCEPT_FILES = [".pdf", ".docx", ".doc"]
+
+def upload_section() -> rx.Component:
+    """File upload section with drag-drop support."""
+    return rx.vstack(
+        # Upload component
+        rx.upload(
+            rx.vstack(
+                rx.icon("upload", size=32, color="gray"),
+                rx.text("Drag and drop or click to browse", color="gray"),
+                rx.text("PDF, DOC, DOCX files up to 10MB", size="1", color="gray"),
+                align="center",
+                spacing="2",
+            ),
+            accept=ACCEPT_FILES,
+            multiple=False,
+            on_upload=DealState.on_file_upload,
+            border="2px dashed var(--gray-6)",
+            border_radius="8px",
+            padding="32px",
+            width="100%",
+            cursor="pointer",
+        ),
+        
+        # Upload progress/status
+        rx.cond(
+            DealState.is_uploading,
+            rx.hstack(rx.spinner(size="2"), rx.text("Uploading..."), spacing="2"),
+        ),
+        
+        # Error display
+        rx.cond(
+            DealState.upload_error != "",
+            rx.callout(DealState.upload_error, icon="alert-triangle", color="red"),
+        ),
+        
+        # Success: Show uploaded file
+        rx.cond(
+            DealState.uploaded_file,
+            rx.hstack(
+                rx.icon("file-text", size=20),
+                rx.text(DealState.uploaded_file["name"]),
+                rx.badge(DealState.uploaded_file["size_formatted"]),
+                rx.button(
+                    rx.icon("x", size=16),
+                    on_click=DealState.clear_uploaded_file,
+                    variant="ghost",
+                    size="1",
+                ),
+                spacing="2",
+                padding="8px 12px",
+                background="var(--gray-2)",
+                border_radius="6px",
+            ),
+        ),
+        
+        spacing="3",
+        width="100%",
+    )
+```
+
+### 2.4 Security Considerations
+
+| Check | Implementation |
+|-------|----------------|
+| Extension validation | Server-side in `FileUploadService.validate_file_type()` |
+| Filename sanitization | `os.path.basename()` prevents path traversal |
+| Unique filenames | UUID suffix prevents collisions |
+| Storage location | Outside web-served static directories |
 
 ---
 
-## 3. Static PDF Viewer (Review Page)
+## 3. PDF Viewer (Review Page)
 
-### 3.1 Update Review Page
+> **Reference**: [PDF Viewer Implementation Guide](../libraries/pdf_viewer/README.md)
+
+### 3.1 Create PDF Viewer State Mixin
+
+**File**: `app/states/deals/mixins/review_mixin.py` (MODIFY)
+
+Add PDF viewer state:
+```python
+# PDF Viewer state
+n_pages: int = 1
+current_pdf_page: int = 1
+
+@rx.var
+def document_path(self) -> str:
+    """Return path to the deal's PDF document."""
+    return "/data/inputs/deals/sample_deal.pdf"
+
+@rx.event
+def on_pdf_load_success(self, info: dict):
+    self.n_pages = info.get("numPages", 1)
+    self.current_pdf_page = 1
+
+@rx.event
+def pdf_prev_page(self):
+    self.current_pdf_page = max(1, self.current_pdf_page - 1)
+
+@rx.event
+def pdf_next_page(self):
+    self.current_pdf_page = min(self.n_pages, self.current_pdf_page + 1)
+```
+
+### 3.2 Update Review Page
 
 **File**: `app/pages/deals/review_page.py` (MODIFY)
 
-Update "Open in Viewer" button:
+Use the shared PDF viewer component:
 ```python
-rx.el.a(
-    "Open in Viewer",
-    href="/data/inputs/deals/sample_deal.pdf",
-    target="_blank",
-    class_name="mt-4 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50",
+from app.components.shared.pdf_viewer import Document, Page
+
+# In the page layout, replace "Open in Viewer" button with:
+rx.vstack(
+    rx.hstack(
+        rx.button("<", on_click=DealState.pdf_prev_page,
+                  disabled=DealState.current_pdf_page <= 1),
+        rx.text(f"{DealState.current_pdf_page} / {DealState.n_pages}"),
+        rx.button(">", on_click=DealState.pdf_next_page,
+                  disabled=DealState.current_pdf_page >= DealState.n_pages),
+    ),
+    Document.create(
+        Page.create(page_number=DealState.current_pdf_page),
+        file=DealState.document_path,
+        on_load_success=DealState.on_pdf_load_success,
+    ),
+    align="center",
 )
 ```
 
