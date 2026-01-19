@@ -13,12 +13,9 @@ Before proceeding, please confirm or provide the following information:
 
 ---
 
-## Reference Documentation
-Read and follow: `docs/style_guides/reflex-architecture-guide.md`
-
 ## Overview
 
-This prompt guides the creation of a complete module page following the project's established patterns:
+This prompt guides the creation of a complete module page following established Reflex patterns:
 - Multi-region layout with navigation, tabs, content, and sidebar
 - State management with mixins
 - Service layer for business logic

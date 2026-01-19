@@ -13,12 +13,9 @@ Before proceeding, please confirm or provide the following information:
 
 ---
 
-## Reference Documentation
-Read and follow: `docs/style_guides/reflex-architecture-guide.md`
-
 ## Overview
 
-This prompt guides adding a new tab to an existing module, following the established patterns in this project (e.g., how `add_page.py` was added to the Deals module).
+This prompt guides adding a new tab to an existing module, following established Reflex patterns.
 
 ---
 
@@ -220,19 +217,19 @@ def {tab_slug}_table() -> rx.Component:
 
 ---
 
-## Example: Adding an "Analytics" Tab to Deals Module
+## Example: Adding an "Analytics" Tab
 
 **Summary of files to create/modify:**
 
 ```
 app/
-├── states/deals/
+├── states/{module}/
 │   ├── {module}_state.py          # MODIFY: Add mixin import
 │   └── mixins/
 │       └── analytics_mixin.py     # CREATE: Tab-specific state
 │
-├── pages/deals/
-│   ├── deals_page.py              # MODIFY: Add tab definition + page function
+├── pages/{module}/
+│   ├── {module}_page.py           # MODIFY: Add tab definition + page function
 │   └── analytics_page.py          # CREATE: Tab view component
 │
 └── app.py                         # MODIFY: Add route registration
@@ -243,21 +240,18 @@ app/
 ## Patterns to Follow
 
 ### 1. Tab View Structure
-Follow the pattern in `app/pages/deals/add_page.py`:
 - Main container `rx.el.div` with `min-h-screen bg-gray-50`
 - Inner container with `w-full px-4 py-6`
 - Header with title and description
 - Content sections with `bg-white p-6 rounded-xl shadow-sm border border-gray-100`
 
 ### 2. State Integration
-Follow the pattern in `app/states/deals/mixins/add_mixin.py`:
 - Use `rx.State, mixin=True` for mixin classes
 - Use `@rx.event` decorator for event handlers
 - Use `@rx.var(cache=True)` for computed properties
 - Access service layer for data operations
 
 ### 3. Route Registration
-Follow the pattern in `app/app.py`:
 - Use `on_load` list for initializing tab state
 - Always set `UIState.set_module()` and `UIState.set_tab()`
 - Add data loading events if the tab needs data on mount
