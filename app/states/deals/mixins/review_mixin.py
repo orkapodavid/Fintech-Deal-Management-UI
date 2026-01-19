@@ -84,35 +84,25 @@ class DealReviewMixin(rx.State, mixin=True):
     def open_pdf_local(self):
         """Open the PDF file from the local/network path.
 
-        First attempts to open via file:// URL. Browsers may block this for security,
-        so we also copy the path to clipboard and show an alert so users can paste
-        in Windows Explorer.
+        Copies the path to clipboard and shows an alert with instructions.
+        Browsers block file:// URLs from web pages for security.
         """
         if self.active_review_deal and self.active_review_deal.source_file:
             path = self.active_review_deal.source_file
-            file_url = self._get_file_url(path)
-            # Try to open, and also copy to clipboard as fallback
-            # The JavaScript will:
-            # 1. Try window.open (may be blocked by browser)
-            # 2. Copy path to clipboard
-            # 3. Show alert with instructions
+            # Escape backslashes for JavaScript string
+            js_path = path.replace("\\", "\\\\")
+
             return rx.call_script(f'''
                 (function() {{
-                    const path = "{path.replace("\\", "\\\\")}";
-                    const fileUrl = "{file_url}";
+                    const path = "{js_path}";
                     
                     // Copy path to clipboard
-                    navigator.clipboard.writeText(path).catch(function(err) {{
+                    navigator.clipboard.writeText(path).then(function() {{
+                        alert('Path copied to clipboard!\\n\\nPaste this path in Windows Explorer to open the file:\\n\\n' + path);
+                    }}).catch(function(err) {{
                         console.error('Could not copy path: ', err);
+                        alert('File path:\\n\\n' + path + '\\n\\nPlease copy this path manually and paste in Windows Explorer.');
                     }});
-                    
-                    // Try to open the file URL
-                    const newWindow = window.open(fileUrl, '_blank');
-                    
-                    // If blocked, show instruction alert
-                    if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {{
-                        alert('Path copied to clipboard!\\n\\nBrowser blocked direct file access.\\nPaste the path in Windows Explorer to open:\\n\\n' + path);
-                    }}
                 }})();
             ''')
 

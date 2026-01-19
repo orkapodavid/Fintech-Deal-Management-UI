@@ -82,7 +82,8 @@ class DealService:
                 flag_top_up=random.choice([True, False]),
                 sector=random.choice(sectors),
                 country=random.choice(countries),
-                source_file=f"\\\\fileserver\\deals\\2026\\{ticker}_term_sheet.pdf",
+                # Use actual local path for testing - change to network path in production
+                source_file=r"C:\Users\orkap\Desktop\Programming\Fintech-Deal-Management-UI\assets\sample_deal.pdf",
                 deal_description=fake.paragraph(nb_sentences=3),
                 reg_id=f"333-{random.randint(100000, 999999)}",
                 warrants_min=warrants_min,
